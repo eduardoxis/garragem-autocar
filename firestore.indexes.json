@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    { "collectionGroup": "quotes", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "companyId", "order": "ASCENDING" },
+      { "fieldPath": "deleted", "order": "ASCENDING" },
+      { "fieldPath": "createdAt", "order": "DESCENDING" }
+    ]},
+    { "collectionGroup": "reminders", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "companyId", "order": "ASCENDING" },
+      { "fieldPath": "deleted", "order": "ASCENDING" },
+      { "fieldPath": "status", "order": "ASCENDING" },
+      { "fieldPath": "scheduledAt", "order": "ASCENDING" }
+    ]},
+    { "collectionGroup": "customers", "queryScope": "COLLECTION", "fields": [
+      { "fieldPath": "companyId", "order": "ASCENDING" },
+      { "fieldPath": "deleted", "order": "ASCENDING" },
+      { "fieldPath": "nameSearch", "order": "ASCENDING" }
+    ]}
+  ],
+  "fieldOverrides": []
+}

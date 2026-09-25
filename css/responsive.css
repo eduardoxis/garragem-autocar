@@ -1,0 +1,9 @@
+@media (max-width: 520px) {
+  html { font-size: 15px; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .toolbar > .btn, .toolbar > .field { flex: 1 1 140px; }
+  .card-header { align-items: flex-start; flex-direction: column; }
+  .card-header .btn { width: 100%; }
+  .toast-region { left: 12px; right: 12px; bottom: 82px; }
+  .toast { min-width: 0; }
+}

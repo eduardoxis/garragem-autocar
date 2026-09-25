@@ -1,0 +1,19 @@
+{
+  "name": "garagem-auto-car-oficina",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "test": "node tests/run.js",
+    "check": "node --check js/app.js && node --check js/guards.js && node --check js/modules/crud-page.js && node --check js/modules/orcamentos/page.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.5.0",
+    "jspdf": "^3.0.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "vercel": "^48.1.0"
+  }
+}

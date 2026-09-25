@@ -1,0 +1,11 @@
+{
+  "name": "Garagem Auto Car — Gestão de Oficina",
+  "short_name": "Garagem Auto Car",
+  "start_url": "/index.html#dashboard",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#090a0b",
+  "icons": [
+    { "src": "/assets/garagem-auto-car-logo.png", "sizes": "1280x1280", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
