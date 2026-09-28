@@ -24,6 +24,10 @@ export function requireAuth({ role = null, module = document.body.dataset.module
       }
       const denied = (role && profile.role !== role) || (profile.role === 'user' && module && !userAllowedPages.has(module));
       if (denied) {
+        if (profile.role === 'user') {
+          location.replace('/index.html#clientes');
+          return;
+        }
         location.replace('/login.html?denied=1');
         return;
       }

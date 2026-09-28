@@ -1,6 +1,7 @@
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import { auth, isFirebaseConfigured } from './firebase/firebase-config.js';
 import { login, recoverPassword } from './firebase/authentication.js';
+import { getProfile } from './firebase/firestore.js';
 import { getIcon } from './components/icons.js';
 import { createToast } from './components/toast.js';
 
@@ -19,7 +20,35 @@ toggle.addEventListener('click', () => {
   toggle.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
 });
 
-if (isFirebaseConfigured) onAuthStateChanged(auth, user => { if (user) location.replace('/index.html#dashboard'); });
+let redirecting = false;
+const userRoutes = new Set(['clientes', 'orcamentos', 'perfil']);
+
+function destinationFor(profile) {
+  const returnTo = loginParams.get('return');
+  const validReturn = returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//');
+  if (profile.role !== 'user') return validReturn ? returnTo : '/index.html#dashboard';
+  const route = validReturn ? returnTo.split('#')[1]?.split('?')[0] : '';
+  return userRoutes.has(route) ? returnTo : '/index.html#clientes';
+}
+
+async function redirectAuthorizedUser(user) {
+  if (redirecting) return;
+  try {
+    const profile = await getProfile(user.uid);
+    if (!profile || profile.active !== true) {
+      await auth.signOut();
+      error.textContent = 'Esta conta está inativa. Procure o administrador.';
+      return;
+    }
+    redirecting = true;
+    location.replace(destinationFor(profile));
+  } catch (reason) {
+    console.error('Não foi possível validar o acesso', reason);
+    error.textContent = 'Não foi possível validar sua conta. Tente novamente.';
+  }
+}
+
+if (isFirebaseConfigured) onAuthStateChanged(auth, user => { if (user) redirectAuthorizedUser(user); });
 else document.documentElement.dataset.setupRequired = 'true';
 
 form.addEventListener('submit', async event => {
@@ -29,8 +58,6 @@ form.addEventListener('submit', async event => {
   button.disabled = true;
   try {
     await login(form.email.value, password.value, form.remember.checked);
-    const returnTo = loginParams.get('return');
-    location.replace(returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/index.html#dashboard');
   } catch { error.textContent = 'E-mail ou senha inválidos.'; }
   finally { button.disabled = false; }
 });
