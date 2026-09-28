@@ -5,7 +5,7 @@ import {
   setPersistence,
   signInWithEmailAndPassword,
   signOut
-} from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/firebase-auth.js';
+} from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/auth/+esm';
 import { auth } from './firebase-config.js';
 
 export async function login(email, password, remember) {
