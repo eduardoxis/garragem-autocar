@@ -18,10 +18,11 @@ function inputFor(field, value = '') {
   return `<input ${common} type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
 }
 
-function formFor(fields, record = {}) {
+function formFor(fields, record = null) {
+  const values = record || {};
   const form = document.createElement('form');
   form.className = 'form-grid';
-  form.innerHTML = fields.map(field => `<div class="field ${field.full ? 'full' : ''}">${field.type === 'checkbox' ? '' : `<label for="field-${field.key}">${field.label}</label>`}${inputFor(field, record[field.key])}</div>`).join('');
+  form.innerHTML = fields.map(field => `<div class="field ${field.full ? 'full' : ''}">${field.type === 'checkbox' ? '' : `<label for="field-${field.key}">${field.label}</label>`}${inputFor(field, values[field.key])}</div>`).join('');
   return form;
 }
 
