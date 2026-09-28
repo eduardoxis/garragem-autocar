@@ -3,11 +3,12 @@ import { getAuth } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: 'SUBSTITUA_FIREBASE_API_KEY',
-  authDomain: 'SUBSTITUA_FIREBASE_AUTH_DOMAIN',
-  projectId: 'SUBSTITUA_FIREBASE_PROJECT_ID',
-  appId: 'SUBSTITUA_FIREBASE_APP_ID',
-  messagingSenderId: 'SUBSTITUA_FIREBASE_MESSAGING_SENDER_ID'
+  apiKey: 'AIzaSyDqYz5K62d-oFHou8a7PP7ml3UAqa8UGOo',
+  authDomain: 'garragem-autocar.firebaseapp.com',
+  projectId: 'garragem-autocar',
+  storageBucket: 'garragem-autocar.firebasestorage.app',
+  messagingSenderId: '181808845708',
+  appId: '1:181808845708:web:ebd452d12c56919e0bfca9'
 };
 
 export const isFirebaseConfigured = !Object.values(firebaseConfig).some(value => value.startsWith('SUBSTITUA_'));
