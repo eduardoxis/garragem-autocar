@@ -2,8 +2,43 @@ import { createModal } from '../../components/modal.js';
 import { createToast } from '../../components/toast.js';
 import { getIcon } from '../../components/icons.js';
 import { listRecords } from '../../firebase/firestore.js';
+import { db, firebaseConfig } from '../../firebase/firebase-config.js';
+import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
+import { createUserWithEmailAndPassword, deleteUser, getAuth, updateProfile } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
+import { doc, serverTimestamp, setDoc } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
+
+const userCreationMessage = error => ({
+  'auth/email-already-in-use':'Este e-mail já está cadastrado no Firebase.',
+  'auth/invalid-email':'Informe um endereço de e-mail válido.',
+  'auth/weak-password':'A senha precisa ter pelo menos 8 caracteres.',
+  'auth/operation-not-allowed':'Ative o método E-mail/senha no Firebase Authentication.',
+  'permission-denied':'Seu usuário não possui permissão para cadastrar contas.'
+}[error?.code] || 'Não foi possível criar o usuário. Tente novamente.');
+
+async function createAuthorizedUser({ name, email, password, role, companyId }) {
+  const secondaryApp = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
+  let createdUser = null;
+  let profileSaved = false;
+  try {
+    const secondaryAuth = getAuth(secondaryApp);
+    const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    createdUser = credential.user;
+    await updateProfile(createdUser, { displayName:name });
+    await setDoc(doc(db, 'users', createdUser.uid), {
+      name, email, role, companyId, active:true, deleted:false,
+      createdAt:serverTimestamp(), updatedAt:serverTimestamp()
+    });
+    profileSaved = true;
+    return createdUser.uid;
+  } catch (error) {
+    if (createdUser && !profileSaved) await deleteUser(createdUser).catch(() => {});
+    throw error;
+  } finally {
+    await deleteApp(secondaryApp).catch(() => {});
+  }
+}
 
 export async function openAdminPanel() {
   const existing = document.querySelector('[data-admin-panel]');
@@ -38,13 +73,23 @@ export async function openAdminPanel() {
   };
   newUser.addEventListener('click',()=>{
     const form=document.createElement('form'); form.className='form-grid';
-    form.innerHTML='<div class="field"><label>Nome</label><input class="input" name="name" maxlength="120" required></div><div class="field"><label>E-mail</label><input class="input" name="email" type="email" maxlength="254" required></div><div class="field"><label>Senha temporária</label><input class="input" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div><div class="field"><label>Perfil</label><select class="select" name="role"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div>';
+    form.innerHTML='<div class="field"><label>Nome</label><input class="input" name="name" maxlength="120" required></div><div class="field"><label>E-mail</label><input class="input" name="email" type="email" maxlength="254" required></div><div class="field"><label>Senha temporária</label><input class="input" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div><div class="field"><label>Perfil</label><select class="select" name="role"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div><p class="form-error full" role="alert" hidden></p>';
     createModal({title:'Novo usuário autorizado',content:form,confirmText:'Criar usuário',onConfirm:async()=>{
       if(!form.reportValidity())return false;
-      const {auth}=await import('../../firebase/firebase-config.js');
-      const response=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${await auth.currentUser.getIdToken()}`},body:JSON.stringify({...Object.fromEntries(new FormData(form)),companyId:profile.companyId})});
-      if(!response.ok)throw new Error('Falha ao criar usuário');
-      createToast('Usuário criado com sucesso.'); await loadUsers();
+      const errorElement=form.querySelector('.form-error');
+      errorElement.hidden=true;
+      const values=Object.fromEntries(new FormData(form));
+      values.name=String(values.name).trim();
+      values.email=String(values.email).trim().toLowerCase();
+      try {
+        await createAuthorizedUser({...values,companyId:profile.companyId});
+        createToast('Usuário criado com sucesso.'); await loadUsers();
+      } catch(error) {
+        console.error('Falha ao criar usuário',error);
+        errorElement.textContent=userCreationMessage(error);
+        errorElement.hidden=false;
+        return false;
+      }
     }});
   });
   await loadUsers();
