@@ -1,3 +1,42 @@
+@media (max-width: 1380px) {
+  .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-actions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1100px) {
+  .dashboard-intro { grid-template-columns: 1fr; }
+  .dashboard-content-grid { grid-template-columns: 1fr; }
+  .attention-card__body { min-height: 290px; }
+}
+
+@media (max-width: 760px) {
+  .header-date { display: none; }
+  .dashboard-page { gap: 15px; }
+  .dashboard-intro { gap: 15px; }
+  .dashboard-welcome { padding: 4px 2px; }
+  .dashboard-welcome h1 { font-size: 2rem; }
+  .workshop-banner { min-height: 132px; padding: 20px 112px 20px 28px; }
+  .workshop-banner__line { left: 18px; height: 62px; }
+  .workshop-banner__copy { margin-left: 13px; }
+  .workshop-banner__copy span { font-size: .77rem; }
+  .workshop-banner img { right: 13px; width: 88px; height: 88px; }
+  .dashboard-stats { gap: 10px; }
+  .dashboard-stats .stat-card { min-height: 116px; padding: 14px; }
+  .dashboard-stats .stat-icon { width: 41px; height: 41px; }
+  .stat-card__content small { white-space: normal; font-size: .66rem; }
+  .stat-card__content strong { font-size: 1.4rem; }
+  .stat-card__content > span { display: none; }
+  .dashboard-card-header { min-height: 0; align-items: flex-start; flex-direction: column; padding: 16px; }
+  .dashboard-card-title p { font-size: .74rem; }
+  .period-filter { width: 100%; }
+  .period-filter .select { flex: 1; }
+  .chart-card__body { height: 300px; padding: 15px 12px 12px; }
+  .attention-card .dashboard-card-header { flex-direction: row; align-items: center; }
+  .attention-card__body { min-height: 270px; padding: 14px; }
+  .attention-state { min-height: 235px; }
+  .quick-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 520px) {
   html { font-size: 15px; }
   .stats-grid { grid-template-columns: 1fr; }
@@ -6,4 +45,11 @@
   .card-header .btn { width: 100%; }
   .toast-region { left: 12px; right: 12px; bottom: 82px; }
   .toast { min-width: 0; }
+  .dashboard-stats { grid-template-columns: 1fr; }
+  .dashboard-stats .stat-card { min-height: 104px; }
+  .workshop-banner { min-height: 150px; padding-right: 96px; }
+  .workshop-banner__copy strong { font-size: 1.08rem; }
+  .workshop-banner img { right: 8px; width: 78px; height: 78px; }
+  .quick-actions-grid { grid-template-columns: 1fr; }
+  .quick-action { min-height: 62px; }
 }
