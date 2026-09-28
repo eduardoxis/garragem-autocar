@@ -60,7 +60,7 @@ export async function createQuoteWithReminder(quote, companyId) {
   batch.set(quoteRef, { ...quote, companyId, deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   batch.set(reminderRef, {
     companyId, type: 'quote_follow_up', step: 1, quoteId: quoteRef.id,
-    customerId: quote.customerId, customerName: quote.customerName,
+    customerId: quote.customerId || null, customerName: quote.customerName,
     whatsapp: quote.whatsapp || '', scheduledAt: tomorrow, status: 'pending',
     deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
