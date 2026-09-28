@@ -1,4 +1,4 @@
-import { onAuthStateChanged } from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/auth/+esm';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import { auth, isFirebaseConfigured } from './firebase/firebase-config.js';
 import { login, recoverPassword } from './firebase/authentication.js';
 import { getIcon } from './components/icons.js';

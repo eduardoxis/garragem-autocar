@@ -1,6 +1,6 @@
-import { initializeApp } from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/app/+esm';
-import { getAuth } from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/auth/+esm';
-import { getFirestore } from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/firestore/+esm';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
+import { getAuth } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
+import { getFirestore } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDqYz5K62d-oFHou8a7PP7ml3UAqa8UGOo',
