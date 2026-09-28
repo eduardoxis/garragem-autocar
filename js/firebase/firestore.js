@@ -1,7 +1,7 @@
 import {
   addDoc, collection, doc, getCountFromServer, getDoc, getDocs, limit, orderBy,
   query, serverTimestamp, startAfter, updateDoc, where, writeBatch
-} from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
+} from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
 
 export async function getProfile(uid) {

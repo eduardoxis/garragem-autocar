@@ -1,4 +1,4 @@
-import { where, Timestamp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
+import { where, Timestamp } from 'https://cdn.jsdelivr.net/npm/firebase@12.3.0/firebase-firestore.js';
 import Chart from 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/auto/+esm';
 import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
