@@ -66,6 +66,13 @@ function openDetails(quote) {
   wrapper.querySelector('#follow-up').addEventListener('click',()=>{modal.close();openFollowUp(quote);});
 }
 
+function defaultQuoteValidity() {
+  const date = new Date();
+  date.setDate(date.getDate() + 30);
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 10);
+}
+
 function quoteEditor(record = {}) {
   const root = document.createElement('div');
   const items = (record.items?.length ? record.items : [
@@ -74,6 +81,7 @@ function quoteEditor(record = {}) {
     {type:'Serviço',description:'',brand:'',unit:'UN',quantity:1,unitPrice:0,discount:0,addition:0}
   ]).map(item => ({...item}));
   const selectedType = record.customerType || 'Pessoa Física';
+  const validUntil = record.validUntil || defaultQuoteValidity();
   root.className = 'quote-editor';
   root.innerHTML = `<div class="quote-editor-heading"><div><button class="btn btn-icon" type="button" id="cancel-editor" aria-label="Voltar">${getIcon('arrowLeft')}</button><span><h1>${record.id ? 'Editar orçamento' : 'Novo orçamento'}</h1><p>Preencha os dados e adicione os produtos ou serviços.</p></span></div><div class="quote-editor-actions"><button class="btn" type="button" id="cancel-editor-top">Cancelar</button><button class="btn" type="button" id="save-quote">${getIcon('save')} Salvar</button><button class="btn btn-primary" type="button" id="pdf-quote">${getIcon('pdf')} Gerar PDF</button></div></div>
   <form id="quote-form">
@@ -82,7 +90,7 @@ function quoteEditor(record = {}) {
       <div class="field"><label>Tipo de cliente</label><input type="hidden" name="customerType" value="${escapeHtml(selectedType)}"><div class="segmented" role="group" aria-label="Tipo de cliente"><button type="button" data-customer-type="Pessoa Física" class="${selectedType === 'Pessoa Física' ? 'active' : ''}">Pessoa Física</button><button type="button" data-customer-type="Pessoa Jurídica" class="${selectedType === 'Pessoa Jurídica' ? 'active' : ''}">Pessoa Jurídica</button></div></div>
       <div class="field"><label>CPF/CNPJ</label><input class="input" name="document" value="${escapeHtml(record.document || '')}" placeholder="000.000.000-00"></div>
       <div class="field"><label>Telefone / WhatsApp</label><input class="input" name="whatsapp" value="${escapeHtml(record.whatsapp || '')}" placeholder="(61) 99999-9999"></div>
-      <div class="field"><label>Validade do orçamento *</label><input class="input" name="validUntil" type="date" value="${escapeHtml(record.validUntil || '')}" required></div>
+      <div class="field"><label>Validade do orçamento *</label><input class="input" name="validUntil" type="date" value="${escapeHtml(validUntil)}" required></div>
       <div class="field"><label>Status</label><select class="select" name="status">${statusOptions.map(status=>`<option ${record.status === status ? 'selected' : ''}>${status}</option>`).join('')}</select></div>
       <div class="field"><label>Veículo</label><input class="input" name="vehicle" value="${escapeHtml(record.vehicle || '')}" placeholder="Marca e modelo"></div>
       <div class="field"><label>Placa</label><input class="input" name="plate" value="${escapeHtml(record.plate || '')}" placeholder="ABC1D23"></div>
