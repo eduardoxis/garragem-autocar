@@ -23,7 +23,12 @@ const paths = {
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   whatsapp: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.4 9.4 0 0 1-4-.9L3 21l1.8-4.8A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.5 8.5c.5 3 2 4.5 5 5l1-1.2 2 .8-.2 2c-4.8 1.2-9.5-3.5-8.3-8.3l2-.2.8 2z"/>',
   pdf: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 15h8M8 11h2"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  filter: '<path d="M4 4h16l-6.5 7.2V19l-3 1v-8.8z"/>',
+  refresh: '<path d="M20 6v5h-5M4 18v-5h5"/><path d="M6.1 9a7 7 0 0 1 11.7-2.6L20 11M4 13l2.2 4.6A7 7 0 0 0 17.9 15"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+  warning: '<path d="M12 3 2.5 20h19z"/><path d="M12 9v4M12 17h.01"/>',
+  trend: '<path d="m4 16 5-5 4 4 7-8M15 7h5v5"/>'
   ,arrowLeft: '<path d="M19 12H5M12 19l-7-7 7-7"/>'
   ,save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>'
 };

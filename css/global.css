@@ -141,6 +141,58 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .admin-card small, .admin-users .card-header p { margin: 0; color: var(--muted); line-height: 1.45; }
 .admin-users .card-header > div { display: grid; gap: 4px; }
 
+/* Layout operacional baseado nas telas de referência */
+.module-page { display:grid; gap:14px; }
+.module-page .page-hero { min-height:76px; margin:0; }
+.module-page .page-hero-icon { width:62px; height:62px; border-radius:14px; box-shadow:0 9px 20px rgba(255,80,15,.16); }
+.module-page .page-hero h1 { font-size:clamp(1.5rem,1.8vw,1.9rem); }
+.module-page .page-hero p { font-size:.84rem; }
+.module-page .page-hero .btn-primary { min-width:150px; min-height:46px; }
+.module-metrics { gap:12px; margin:0; }
+.metric-card { min-height:104px; padding:15px 16px; box-shadow:0 7px 20px rgba(16,24,40,.04); }
+.metric-card .stat-icon { width:52px; height:52px; }
+.metric-card strong { font-size:1.42rem; }
+.metric-card > div > span { display:block; margin-top:4px; color:var(--muted); font-size:.7rem; }
+.metric-card--green .stat-icon { color:#079455; background:#e1f7eb; }
+.metric-card--blue .stat-icon { color:#1570ef; background:#e3f0ff; }
+.metric-card--warning .stat-icon { color:#e88900; background:#fff3d7; }
+.module-toolbar { position:relative; align-items:center; gap:12px; padding:13px 16px; margin:0; border-radius:14px; }
+.module-toolbar .search .input { min-height:44px; }
+.filter-toggle { min-width:116px; }
+.quick-filter-panel { position:absolute; z-index:20; top:calc(100% + 7px); right:15px; width:min(390px,calc(100vw - 30px)); display:grid; grid-template-columns:1fr auto; gap:10px; padding:14px; background:#fff; border:1px solid var(--border); border-radius:13px; box-shadow:0 18px 40px rgba(16,24,40,.14); }
+.quick-filter-panel .field { gap:4px; }
+.quick-filter-panel .field span { color:var(--muted); font-size:.7rem; font-weight:700; }
+.module-list-card { overflow:visible; border-radius:14px; }
+.module-list-header { min-height:66px; display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); }
+.module-list-icon { width:42px; height:42px; display:grid; place-items:center; flex:0 0 auto; color:#fff; background:#ff5011; border-radius:10px; }
+.module-list-header h2 { margin:0; font-size:1rem; }
+.module-list-header p { margin:3px 0 0; color:var(--muted); font-size:.75rem; }
+.module-list-total { margin-left:auto; color:var(--muted); font-size:.76rem; }
+.module-ordens-servico .module-metrics,.module-agenda .module-metrics { display:none; }
+.module-page .table { min-width:860px; }
+.module-page .table th { padding:9px 13px; font-size:.68rem; background:#f4f7fb; }
+.module-page .table td { padding:9px 13px; font-size:.79rem; }
+.module-page .pagination { padding:11px 15px; font-size:.78rem; }
+.row-menu { position:relative; width:max-content; }
+.row-menu summary { width:38px; min-height:32px; list-style:none; padding:0; }
+.row-menu summary::-webkit-details-marker { display:none; }
+.row-menu > div { position:absolute; z-index:30; top:calc(100% + 4px); right:0; width:135px; display:grid; padding:5px; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 14px 30px rgba(16,24,40,.14); }
+.row-menu button { display:flex; align-items:center; gap:7px; padding:8px 9px; color:var(--text); background:transparent; border:0; border-radius:7px; font-size:.75rem; text-align:left; }
+.row-menu button:hover { background:#f5f7fa; }
+.row-menu button.danger { color:var(--danger); }
+.vehicle-cell { display:flex; align-items:center; gap:9px; }
+.vehicle-cell > img,.vehicle-cell > span { width:48px; height:30px; object-fit:cover; flex:0 0 auto; background:#f1f4f8; border-radius:6px; }
+.vehicle-cell > span { display:grid; place-items:center; color:var(--muted); }
+.vehicle-cell strong,.vehicle-cell small { display:block; white-space:nowrap; }
+.vehicle-cell small { margin-top:2px; color:var(--muted); font-size:.68rem; }
+
+@media (max-width:900px) {
+  .module-page .page-hero { flex-wrap:wrap; }
+  .module-page .page-hero > div { min-width:calc(100% - 80px); }
+  .module-page .page-hero .btn-primary { margin-left:74px; }
+  .module-list-header p,.module-list-total { display:none; }
+}
+
 @media (max-width: 1100px) {
   .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .content-grid { grid-template-columns: 1fr; }

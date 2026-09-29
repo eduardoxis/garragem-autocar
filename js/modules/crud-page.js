@@ -42,14 +42,10 @@ export async function createCrudPage(config) {
   setupErrorBoundary();
   const profile = await requireAuth({ roles:config.roles || (config.adminOnly ? ['admin'] : null) });
   const page = mountShell(profile || { name: 'Configuração pendente', email: '', role: 'admin' }, { title: config.title, active: config.active });
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading"><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section>${config.summary ? '<section class="grid stats-grid" id="page-summary"></section>' : ''}<section class="toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label>${config.filterHtml || ''}</section><section class="card"><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination"><button class="btn" id="load-more">Carregar mais</button><span id="record-count"></span></div></section>`;
+  page.classList.add('module-page', `module-${config.active}`);
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading page-hero"><span class="page-hero-icon"></span><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section>${config.hideMetrics ? '' : '<section class="grid stats-grid module-metrics" id="page-summary"></section>'}<section class="toolbar module-toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label>${config.filterHtml || `<button class="btn filter-toggle" id="filter-toggle" type="button">${getIcon('filter',19)} Filtros</button>`}<div class="quick-filter-panel hidden" id="quick-filter-panel"><label class="field"><span>Status</span><select class="select" id="status-filter"><option value="">Todos</option></select></label><button class="btn" id="clear-filter" type="button">${getIcon('refresh',17)} Limpar filtros</button></div></section><section class="card module-list-card"><header class="module-list-header"><span class="module-list-icon">${getIcon(config.icon || 'file',22)}</span><div><h2>${config.listTitle || `Lista de ${config.title}`}</h2><p>${config.listSubtitle || `Visualize e gerencie os registros de ${config.title.toLocaleLowerCase('pt-BR')}.`}</p></div><span class="module-list-total" id="list-total"></span></header><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination"><button class="btn" id="load-more">${getIcon('refresh',17)} Carregar mais</button><span id="record-count"></span></div></section>`;
   const pageIcons = {clientes:'users',veiculos:'car',agenda:'calendar',estoque:'box',fornecedores:'truck',financeiro:'money','ordens-servico':'file','pos-venda':'clock',servicos:'wrench'};
-  const heading = page.querySelector('.page-heading');
-  heading.classList.add('page-hero');
-  const headingIcon = document.createElement('span');
-  headingIcon.className = 'page-hero-icon';
-  headingIcon.innerHTML = getIcon(pageIcons[config.active] || 'file', 30);
-  heading.prepend(headingIcon);
+  page.querySelector('.page-hero-icon').innerHTML = getIcon(config.icon || pageIcons[config.active] || 'file', 30);
   if (!profile) {
     page.querySelector('#records').innerHTML = '<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os registros reais aparecerão aqui.</p></div></div>';
     page.querySelector('#load-more').disabled = true;
@@ -60,12 +56,10 @@ export async function createCrudPage(config) {
   let filtered = [];
   let cursor = null;
   const recordsElement = page.querySelector('#records');
-  const metricsElement = config.summary ? null : Object.assign(document.createElement('section'), { className:'grid stats-grid generic-metrics' });
-  if (metricsElement) page.querySelector('.toolbar').before(metricsElement);
+  const metricsElement = page.querySelector('#page-summary');
 
-  const actionButtons = record => `<div class="actions"><button class="btn action-btn" data-action="open" data-id="${record.id}">${getIcon('eye',15)} Abrir</button><button class="btn action-btn" data-action="edit" data-id="${record.id}">${getIcon('edit',15)} Editar</button><button class="btn btn-danger action-btn" data-action="delete" data-id="${record.id}">${getIcon('trash',15)} Excluir</button></div>`;
+  const actionButtons = record => `<details class="row-menu"><summary class="btn btn-icon" aria-label="Ações">${getIcon('more',18)}</summary><div><button type="button" data-action="open" data-id="${record.id}">${getIcon('eye',15)} Abrir</button><button type="button" data-action="edit" data-id="${record.id}">${getIcon('edit',15)} Editar</button><button type="button" class="danger" data-action="delete" data-id="${record.id}">${getIcon('trash',15)} Excluir</button></div></details>`;
   const render = () => {
-    if (config.summary) page.querySelector('#page-summary').innerHTML = config.summary(records);
     if (metricsElement) {
       const now = new Date();
       const newThisMonth = records.filter(item => {
@@ -76,14 +70,25 @@ export async function createCrudPage(config) {
         const updatedAt = item.updatedAt?.toDate ? item.updatedAt.toDate() : new Date(item.updatedAt || item.createdAt || 0);
         return updatedAt.toDateString() === now.toDateString();
       }).length;
-      metricsElement.innerHTML = `<article class="card stat-card"><span class="stat-icon">${getIcon('file',22)}</span><div><small>Total de ${config.title}</small><strong>${records.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('plus',22)}</span><div><small>Novos no mês</small><strong>${newThisMonth}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('search',22)}</span><div><small>Registros exibidos</small><strong>${filtered.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('clock',22)}</span><div><small>Atualizados hoje</small><strong>${updatedToday}</strong></div></article>`;
+      if (config.summary) metricsElement.innerHTML = config.summary(records);
+      else {
+        const metricItems = config.metrics?.(records, filtered) || [
+          {icon:config.icon || 'file',label:`Total de ${config.title}`,value:records.length,tone:'orange'},
+          {icon:'plus',label:'Novos no mês',value:newThisMonth,tone:'blue'},
+          {icon:'search',label:'Registros exibidos',value:filtered.length,tone:'green'},
+          {icon:'clock',label:'Atualizados hoje',value:updatedToday,tone:'orange'}
+        ];
+        metricsElement.innerHTML = metricItems.map(item => `<article class="card stat-card metric-card metric-card--${item.tone || 'orange'}"><span class="stat-icon">${getIcon(item.icon || 'file',24)}</span><div><small>${item.label}</small><strong>${item.value}</strong>${item.note ? `<span>${item.note}</span>` : ''}</div></article>`).join('');
+      }
     }
     recordsElement.innerHTML = createTable({ columns: config.columns, records: filtered, actions: actionButtons, emptyActionLabel:config.newLabel || `Cadastrar ${config.singular}` });
     page.querySelector('#record-count').textContent = `${filtered.length} registro(s)`;
+    page.querySelector('#list-total').textContent = `Total de ${records.length} registro(s)`;
   };
   const applySearch = () => {
     const term = page.querySelector('#search').value.trim().toLocaleLowerCase('pt-BR');
-    filtered = !term ? [...records] : records.filter(record => config.searchKeys.some(key => String(record[key] || '').toLocaleLowerCase('pt-BR').includes(term)));
+    const status = page.querySelector('#status-filter')?.value || '';
+    filtered = records.filter(record => (!term || config.searchKeys.some(key => String(record[key] || '').toLocaleLowerCase('pt-BR').includes(term))) && (!status || String(record.status || '') === status));
     render();
   };
   const load = async append => {
@@ -91,6 +96,12 @@ export async function createCrudPage(config) {
     const result = await listRecords(config.collection, profile.companyId, { after: append ? cursor : null, pageSize: config.pageSize || 20 });
     cursor = result.cursor;
     records = append ? [...records, ...result.records] : result.records;
+    const statusFilter = page.querySelector('#status-filter');
+    if (statusFilter) {
+      const selected = statusFilter.value;
+      const statuses = [...new Set(records.map(item => item.status).filter(Boolean))].sort();
+      statusFilter.innerHTML = `<option value="">Todos</option>${statuses.map(status => `<option ${status === selected ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}`;
+    }
     applySearch();
   };
   const openForm = async record => {
@@ -126,6 +137,9 @@ export async function createCrudPage(config) {
 
   page.querySelector('#new-record').addEventListener('click', () => { openForm(null).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); }); });
   page.querySelector('#search').addEventListener('input', applySearch);
+  page.querySelector('#status-filter')?.addEventListener('change', applySearch);
+  page.querySelector('#filter-toggle')?.addEventListener('click', () => page.querySelector('#quick-filter-panel').classList.toggle('hidden'));
+  page.querySelector('#clear-filter')?.addEventListener('click', () => { page.querySelector('#status-filter').value=''; page.querySelector('#search').value=''; applySearch(); });
   page.querySelector('#load-more').addEventListener('click', () => load(true));
   recordsElement.addEventListener('click', event => {
     const button = event.target.closest('[data-action]');

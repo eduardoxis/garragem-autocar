@@ -1,26 +1,21 @@
 import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
-import { listRecords, saveRecord } from '../../firebase/firestore.js';
-import { createToast } from '../../components/toast.js';
+import { listRecords } from '../../firebase/firestore.js';
 import { getIcon } from '../../components/icons.js';
 
-const statuses = ['Entrada realizada','Aguardando diagnóstico','Aguardando aprovação','Aguardando peças','Em execução','Aguardando teste','Finalizado','Aguardando retirada','Entregue'];
 const profile = await requireAuth({ role:'admin' });
 const page = mountShell(profile || {name:'Configuração pendente',role:'admin'}, {title:'Oficina',active:'oficina'});
-page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar as ordens reais.</div><section class="page-heading"><div><h1>Oficina</h1><p>Arraste as ordens entre as etapas para atualizar o andamento.</p></div><a class="btn btn-primary" href="#ordens-servico">Nova ordem de serviço</a></section><div class="kanban" id="kanban"></div>`;
-const heading = page.querySelector('.page-heading');
-heading.classList.add('page-hero');
-const headingIcon = document.createElement('span');
-headingIcon.className = 'page-hero-icon';
-headingIcon.innerHTML = getIcon('wrench', 30);
-heading.prepend(headingIcon);
+const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
+const activeStatuses = ['Entrada realizada','Aguardando diagnóstico','Aguardando aprovação','Aguardando peças','Em execução','Aguardando teste'];
+
+page.classList.add('workshop-page');
+page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar as ordens reais.</div><section class="page-heading page-hero"><span class="page-hero-icon">${getIcon('wrench',30)}</span><div><h1>Oficina</h1><p>Monitore a operação interna e a produtividade da equipe.</p></div></section><section class="stats-grid module-metrics" id="workshop-stats"></section><section class="workshop-layout"><article class="card workshop-boxes"><header class="reference-card-header"><span class="module-list-icon">${getIcon('wrench',21)}</span><div><h2>Boxes da Oficina</h2><p>Visualize a ocupação dos elevadores e o status dos veículos.</p></div><div class="workshop-key"><span class="available">Disponível</span><span class="busy">Em serviço</span></div></header><div class="workshop-box-grid" id="workshop-box-grid"></div></article><article class="card workshop-tasks"><header class="reference-card-header"><span class="module-list-icon">${getIcon('file',21)}</span><div><h2>Tarefas do dia</h2><p>Serviços programados e em andamento hoje.</p></div><a class="btn reference-see-all" href="#ordens-servico">Ver todos</a></header><div id="workshop-task-list"></div></article></section>`;
 
 if (profile) {
-  const { records } = await listRecords('serviceOrders',profile.companyId,{pageSize:100});
-  const kanban = page.querySelector('#kanban');
-  kanban.innerHTML = statuses.map(status=>`<section class="kanban-column" data-status="${status}"><h3>${status}</h3>${records.filter(item=>item.status===status).map(item=>`<article class="kanban-card" draggable="true" data-id="${item.id}"><strong>${item.plate || item.code}</strong><p>${item.vehicle || 'Veículo não informado'}</p><small>${item.customerName || ''}</small></article>`).join('')}</section>`).join('');
-  let dragged = null;
-  kanban.addEventListener('dragstart',event=>{ dragged=event.target.closest('.kanban-card'); });
-  kanban.addEventListener('dragover',event=>event.preventDefault());
-  kanban.addEventListener('drop',async event=>{ event.preventDefault(); const column=event.target.closest('.kanban-column'); if(!column||!dragged)return; column.append(dragged); await saveRecord('serviceOrders',profile.companyId,{status:column.dataset.status},dragged.dataset.id); createToast('Ordem de serviço atualizada.'); });
+  const {records} = await listRecords('serviceOrders',profile.companyId,{pageSize:1000});
+  const active=records.filter(item=>activeStatuses.includes(item.status));
+  const mechanics=new Set(active.map(item=>item.mechanic||item.responsible).filter(Boolean));
+  page.querySelector('#workshop-stats').innerHTML=[{icon:'users',label:'Mecânicos ativos',value:mechanics.size,tone:'green'},{icon:'file',label:'Serviços em execução',value:active.filter(item=>item.status==='Em execução').length,tone:'orange'},{icon:'car',label:'Elevadores ocupados',value:`${Math.min(active.length,6)} / 6`,tone:'blue'},{icon:'clock',label:'Aguardando atendimento',value:active.filter(item=>item.status!=='Em execução').length,tone:'orange'}].map(item=>`<article class="card stat-card metric-card metric-card--${item.tone}"><span class="stat-icon">${getIcon(item.icon,24)}</span><div><small>${item.label}</small><strong>${item.value}</strong></div></article>`).join('');
+  page.querySelector('#workshop-box-grid').innerHTML=Array.from({length:6},(_,index)=>{const order=active[index];return `<article class="workshop-box ${order?'is-busy':'is-free'}"><header><strong>Box ${index+1}</strong><span class="badge ${order?'badge-warning':'badge-success'}">${order?'Em serviço':'Disponível'}</span></header><div class="workshop-box-visual">${getIcon(order?'car':'wrench',48)}</div><strong>${escapeHtml(order?.plate||'Livre')}</strong><p>${escapeHtml(order?.vehicle||'Aguardando próximo serviço')}</p><small>${escapeHtml(order?.service||order?.diagnosis||'')}</small></article>`;}).join('');
+  page.querySelector('#workshop-task-list').innerHTML=active.length?active.slice(0,8).map(item=>`<article class="workshop-task"><span class="task-vehicle-icon">${getIcon('car',20)}</span><div><strong>${escapeHtml(item.code||item.plate||'OS')}</strong><p>${escapeHtml(item.vehicle||item.customerName||'Veículo')}</p></div><span class="badge">${escapeHtml(item.status)}</span><small>${escapeHtml(item.mechanic||item.responsible||'')}</small><a class="btn btn-icon" href="#ordens-servico">${getIcon('more',17)}</a></article>`).join(''):'<div class="empty compact-empty"><strong>Nenhuma tarefa ativa</strong><p>As ordens em andamento aparecerão aqui.</p></div>';
 }

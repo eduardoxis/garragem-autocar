@@ -3,7 +3,9 @@ import { maskCpfCnpj, maskPhone, digits } from '../../utils/masks.js';
 
 createCrudPage({
   title: 'Clientes', active: 'clientes', collection: 'customers', singular: 'cliente', titleKey: 'name', newLabel: 'Novo cliente',
-  subtitle: 'Gerencie os clientes cadastrados na oficina.', searchPlaceholder: 'Buscar por nome, documento, telefone ou placa...', searchKeys: ['name','document','phone','whatsapp','plate'],
+  icon:'users',listTitle:'Lista de Clientes',listSubtitle:'Visualize, edite e gerencie todos os seus clientes cadastrados.',
+  subtitle: 'Gerencie os cadastros e o relacionamento com seus clientes.', searchPlaceholder: 'Pesquisar por nome, telefone, e-mail ou CPF...', searchKeys: ['name','document','phone','whatsapp','plate','email'],
+  metrics:records=>{const now=new Date();const recent=records.filter(item=>{const date=item.createdAt?.toDate?item.createdAt.toDate():new Date(item.createdAt||0);return date.getMonth()===now.getMonth()&&date.getFullYear()===now.getFullYear();}).length;return[{icon:'users',label:'Total de clientes',value:records.length,tone:'orange'},{icon:'car',label:'Clientes com veículos',value:records.filter(item=>item.vehicle||item.vehicleId).length,tone:'green'},{icon:'clock',label:'Atendimentos no mês',value:records.filter(item=>item.lastServiceAt).length,tone:'orange'},{icon:'plus',label:'Novos clientes',value:recent,tone:'blue'}];},
   columns: [{ key:'name',label:'Cliente' },{ key:'whatsapp',label:'WhatsApp' },{ key:'vehicle',label:'Veículo' },{ key:'status',label:'Status',render:value=>`<span class="badge badge-success">${value || 'Ativo'}</span>` }],
   fields: [
     { key:'name',label:'Nome completo',required:true },{ key:'document',label:'CPF/CNPJ' },{ key:'phone',label:'Telefone' },{ key:'whatsapp',label:'WhatsApp' },
