@@ -1,20 +1,20 @@
 :root {
   --sidebar-width: 276px;
-  --sidebar: #090a0b;
-  --sidebar-soft: #1b1d20;
-  --primary: #f47700;
-  --primary-hover: #d85f00;
-  --background: #f1f3f5;
+  --sidebar: #ffffff;
+  --sidebar-soft: #f6f8fb;
+  --primary: #ff5a13;
+  --primary-hover: #e84608;
+  --background: #f7f9fc;
   --surface: #ffffff;
-  --text: #17191c;
-  --muted: #6e747d;
-  --border: #dce0e5;
+  --text: #101828;
+  --muted: #667085;
+  --border: #e5eaf1;
   --success: #119c62;
   --success-soft: #d9f7e9;
   --warning: #d97706;
   --warning-soft: #fff1cf;
   --danger: #df3030;
   --danger-soft: #ffebeb;
-  --radius: 16px;
-  --shadow: 0 12px 34px rgba(13, 40, 82, .07);
+  --radius: 18px;
+  --shadow: 0 12px 30px rgba(16, 24, 40, .055);
 }
