@@ -2,11 +2,18 @@ import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
 import { listRecords, saveRecord } from '../../firebase/firestore.js';
 import { createToast } from '../../components/toast.js';
+import { getIcon } from '../../components/icons.js';
 
 const statuses = ['Entrada realizada','Aguardando diagnóstico','Aguardando aprovação','Aguardando peças','Em execução','Aguardando teste','Finalizado','Aguardando retirada','Entregue'];
 const profile = await requireAuth({ role:'admin' });
 const page = mountShell(profile || {name:'Configuração pendente',role:'admin'}, {title:'Oficina',active:'oficina'});
 page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar as ordens reais.</div><section class="page-heading"><div><h1>Oficina</h1><p>Arraste as ordens entre as etapas para atualizar o andamento.</p></div><a class="btn btn-primary" href="#ordens-servico">Nova ordem de serviço</a></section><div class="kanban" id="kanban"></div>`;
+const heading = page.querySelector('.page-heading');
+heading.classList.add('page-hero');
+const headingIcon = document.createElement('span');
+headingIcon.className = 'page-hero-icon';
+headingIcon.innerHTML = getIcon('wrench', 30);
+heading.prepend(headingIcon);
 
 if (profile) {
   const { records } = await listRecords('serviceOrders',profile.companyId,{pageSize:100});

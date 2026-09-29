@@ -166,6 +166,12 @@ async function load(append) {
 
 function showList() {
   page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie propostas, gere PDF e acompanhe os contatos.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Buscar por cliente, placa ou orçamento..."></label><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination"><button class="btn" id="load-more">Carregar mais</button><span id="quote-count"></span></div></section>`;
+  const heading = page.querySelector('.page-heading');
+  heading.classList.add('page-hero');
+  const headingIcon = document.createElement('span');
+  headingIcon.className = 'page-hero-icon';
+  headingIcon.innerHTML = getIcon('file', 30);
+  heading.prepend(headingIcon);
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
   page.querySelector('#search').addEventListener('input',filter);
   page.querySelector('#status-filter').addEventListener('change',filter);

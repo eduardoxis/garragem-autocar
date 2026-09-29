@@ -2,7 +2,7 @@ import { getIcon } from './icons.js';
 
 const adminItems = [
   ['dashboard','Dashboard','#dashboard'], ['users','Clientes','#clientes'], ['car','Veículos','#veiculos'],
-  ['file','Orçamentos','#orcamentos'], ['wrench','Oficina','#oficina'], ['file','Ordens de Serviço','#ordens-servico'],
+  ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
   ['calendar','Agenda','#agenda'], ['box','Estoque','#estoque'], ['truck','Fornecedores','#fornecedores'],
   ['money','Financeiro','#financeiro'], ['clock','Pós-venda','#pos-venda'], ['chart','Relatórios','#relatorios'],
   ['users','Administração','#administracao'], ['settings','Configurações','#configuracoes']

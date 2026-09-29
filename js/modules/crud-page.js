@@ -41,6 +41,13 @@ export async function createCrudPage(config) {
   const profile = await requireAuth({ roles:config.roles || (config.adminOnly ? ['admin'] : null) });
   const page = mountShell(profile || { name: 'Configuração pendente', email: '', role: 'admin' }, { title: config.title, active: config.active });
   page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading"><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section>${config.summary ? '<section class="grid stats-grid" id="page-summary"></section>' : ''}<section class="toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label>${config.filterHtml || ''}</section><section class="card"><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination"><button class="btn" id="load-more">Carregar mais</button><span id="record-count"></span></div></section>`;
+  const pageIcons = {clientes:'users',veiculos:'car',agenda:'calendar',estoque:'box',fornecedores:'truck',financeiro:'money','ordens-servico':'file','pos-venda':'clock',servicos:'wrench'};
+  const heading = page.querySelector('.page-heading');
+  heading.classList.add('page-hero');
+  const headingIcon = document.createElement('span');
+  headingIcon.className = 'page-hero-icon';
+  headingIcon.innerHTML = getIcon(pageIcons[config.active] || 'file', 30);
+  heading.prepend(headingIcon);
   if (!profile) {
     page.querySelector('#records').innerHTML = '<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os registros reais aparecerão aqui.</p></div></div>';
     page.querySelector('#load-more').disabled = true;
@@ -63,7 +70,11 @@ export async function createCrudPage(config) {
         const createdAt = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || 0);
         return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === now.getMonth();
       }).length;
-      metricsElement.innerHTML = `<article class="card stat-card"><span class="stat-icon">${getIcon('file',22)}</span><div><small>Total de ${config.title}</small><strong>${records.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('plus',22)}</span><div><small>Novos no mês</small><strong>${newThisMonth}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('search',22)}</span><div><small>Registros exibidos</small><strong>${filtered.length}</strong></div></article>`;
+      const updatedToday = records.filter(item => {
+        const updatedAt = item.updatedAt?.toDate ? item.updatedAt.toDate() : new Date(item.updatedAt || item.createdAt || 0);
+        return updatedAt.toDateString() === now.toDateString();
+      }).length;
+      metricsElement.innerHTML = `<article class="card stat-card"><span class="stat-icon">${getIcon('file',22)}</span><div><small>Total de ${config.title}</small><strong>${records.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('plus',22)}</span><div><small>Novos no mês</small><strong>${newThisMonth}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('search',22)}</span><div><small>Registros exibidos</small><strong>${filtered.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('clock',22)}</span><div><small>Atualizados hoje</small><strong>${updatedToday}</strong></div></article>`;
     }
     recordsElement.innerHTML = createTable({ columns: config.columns, records: filtered, actions: actionButtons, emptyActionLabel:config.newLabel || `Cadastrar ${config.singular}` });
     page.querySelector('#record-count').textContent = `${filtered.length} registro(s)`;
