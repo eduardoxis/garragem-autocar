@@ -3,8 +3,39 @@ import { mountShell } from '../../app.js';
 import { listRecords } from '../../firebase/firestore.js';
 import { currency } from '../../utils/currency.js';
 
-const profile=await requireAuth({role:'admin'});const page=mountShell(profile||{name:'Configuração pendente',role:'admin'},{title:'Relatórios',active:'relatorios'});
-page.innerHTML=`<div class="setup-banner">Configure o Firebase para gerar relatórios reais.</div><section class="page-heading"><div><h1>Relatórios</h1><p>Analise faturamento, serviços e produtividade.</p></div></section><section class="toolbar"><select class="select" id="report-type" style="max-width:260px"><option value="quotes">Orçamentos</option><option value="serviceOrders">Ordens de serviço</option><option value="payments">Financeiro</option><option value="customers">Clientes</option><option value="vehicles">Veículos</option></select><input class="input" id="start-date" type="date" style="max-width:180px"><input class="input" id="end-date" type="date" style="max-width:180px"><button class="btn btn-primary" id="generate">Gerar relatório</button><button class="btn" id="csv">Exportar CSV</button></section><section class="card"><div class="card-body" id="report"><div class="empty"><div><strong>Selecione os filtros</strong><p>O resultado será exibido aqui.</p></div></div></div></section>`;
-let data=[];
-const generate=async()=>{const type=page.querySelector('#report-type').value;const result=await listRecords(type,profile.companyId,{pageSize:100});data=result.records;const total=data.reduce((sum,item)=>sum+Number(item.total||item.amount||0),0);page.querySelector('#report').innerHTML=`<div class="grid stats-grid"><article class="card stat-card"><div><small>Registros</small><strong>${data.length}</strong></div></article><article class="card stat-card"><div><small>Valor acumulado</small><strong>${currency(total)}</strong></div></article></div><div class="table-wrap"><table class="table"><thead><tr><th>Código/Nome</th><th>Status</th><th>Valor</th></tr></thead><tbody>${data.map(item=>`<tr><td>${item.code||item.name||item.customerName||item.description||'—'}</td><td>${item.status||'—'}</td><td>${currency(item.total||item.amount||0)}</td></tr>`).join('')}</tbody></table></div>`;};
-page.querySelector('#generate').addEventListener('click',generate);page.querySelector('#csv').addEventListener('click',()=>{if(!data.length)return;const keys=[...new Set(data.flatMap(Object.keys))].filter(key=>!['createdAt','updatedAt'].includes(key));const csv=[keys.join(';'),...data.map(row=>keys.map(key=>`"${String(row[key]??'').replaceAll('"','""')}"`).join(';'))].join('\n');const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='relatorio.csv';link.click();URL.revokeObjectURL(url);});
+const profile = await requireAuth({role:'admin'});
+const page = mountShell(profile || {name:'Configuração pendente',role:'admin'}, {title:'Relatórios',active:'relatorios'});
+page.innerHTML = `<div class="setup-banner">Configure o Firebase para gerar relatórios reais.</div><section class="page-heading"><div><h1>Relatórios</h1><p>Analise faturamento, serviços e produtividade.</p></div></section><section class="toolbar"><select class="select" id="report-type" style="max-width:260px"><option value="quotes">Orçamentos</option><option value="serviceOrders">Ordens de serviço</option><option value="payments">Financeiro</option><option value="customers">Clientes</option><option value="vehicles">Veículos</option><option value="products">Estoque</option></select><input class="input" id="start-date" type="date" style="max-width:180px"><input class="input" id="end-date" type="date" style="max-width:180px"><button class="btn btn-primary" id="generate">Gerar relatório</button><button class="btn" id="csv">Exportar CSV</button></section><section class="card"><div class="card-body" id="report"><div class="empty"><div><strong>Selecione os filtros</strong><p>O resultado será exibido aqui.</p></div></div></div></section>`;
+
+let data = [];
+const dateValue = item => {
+  const value = item.paidAt || item.date || item.dueDate || item.contactDate || item.createdAt;
+  if (value?.toDate) return value.toDate().toISOString().slice(0,10);
+  return typeof value === 'string' ? value.slice(0,10) : '';
+};
+
+const generate = async () => {
+  const type = page.querySelector('#report-type').value;
+  const start = page.querySelector('#start-date').value;
+  const end = page.querySelector('#end-date').value;
+  const result = await listRecords(type, profile.companyId, {pageSize:1000});
+  data = result.records.filter(item => {
+    const date = dateValue(item);
+    return (!start || !date || date >= start) && (!end || !date || date <= end);
+  });
+  const total = data.reduce((sum,item) => sum + Number(item.total || item.amount || item.salePrice || 0), 0);
+  const received = data.filter(item => item.type === 'Receita' || item.status === 'Pago').reduce((sum,item) => sum + Number(item.amount || item.total || 0), 0);
+  page.querySelector('#report').innerHTML = `<div class="grid stats-grid"><article class="card stat-card"><div><small>Registros</small><strong>${data.length}</strong></div></article><article class="card stat-card"><div><small>Valor acumulado</small><strong>${currency(total)}</strong></div></article><article class="card stat-card"><div><small>Receitas recebidas</small><strong>${currency(received)}</strong></div></article></div><div class="table-wrap"><table class="table"><thead><tr><th>Código/Nome</th><th>Data</th><th>Status</th><th>Valor</th></tr></thead><tbody>${data.map(item=>`<tr><td>${item.code || item.name || item.customerName || item.description || '—'}</td><td>${dateValue(item) || '—'}</td><td>${item.status || '—'}</td><td>${currency(item.total || item.amount || item.salePrice || 0)}</td></tr>`).join('')}</tbody></table></div>`;
+};
+
+page.querySelector('#generate').addEventListener('click', () => generate().catch(error => console.error(error)));
+page.querySelector('#csv').addEventListener('click', () => {
+  if (!data.length) return;
+  const keys = [...new Set(data.flatMap(Object.keys))].filter(key => !['createdAt','updatedAt'].includes(key));
+  const csv = [keys.join(';'), ...data.map(row => keys.map(key => `"${String(row[key] ?? '').replaceAll('"','""')}"`).join(';'))].join('\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'relatorio-garagem-auto-car.csv'; link.click();
+  URL.revokeObjectURL(url);
+});

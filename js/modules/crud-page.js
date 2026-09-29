@@ -9,28 +9,38 @@ import { formatDate } from '../utils/date.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
 
-function inputFor(field, value = '') {
+function inputFor(field, value = '', lookupOptions = []) {
   const required = field.required ? 'required' : '';
   const common = `class="${field.type === 'textarea' ? 'textarea' : field.type === 'select' ? 'select' : 'input'}" name="${field.key}" id="field-${field.key}" ${required}`;
+  if (field.reference) return `<select class="select" name="${field.key}" id="field-${field.key}" ${required}><option value="">${field.reference.placeholder || 'Selecione...'}</option>${lookupOptions.map(option => `<option value="${escapeHtml(option.id)}" ${String(option.id) === String(value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select>`;
   if (field.type === 'select') return `<select ${common}>${(field.options || []).map(option => `<option value="${escapeHtml(option.value ?? option)}" ${String(option.value ?? option) === String(value) ? 'selected' : ''}>${escapeHtml(option.label ?? option)}</option>`).join('')}</select>`;
   if (field.type === 'textarea') return `<textarea ${common}>${escapeHtml(value)}</textarea>`;
   if (field.type === 'checkbox') return `<label class="checkbox-row"><input name="${field.key}" type="checkbox" ${value ? 'checked' : ''}> ${field.help || field.label}</label>`;
   return `<input ${common} type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
 }
 
-function formFor(fields, record = null) {
+function formFor(fields, record = null, lookups = {}) {
   const values = record || {};
   const form = document.createElement('form');
   form.className = 'form-grid';
-  form.innerHTML = fields.map(field => `<div class="field ${field.full ? 'full' : ''}">${field.type === 'checkbox' ? '' : `<label for="field-${field.key}">${field.label}</label>`}${inputFor(field, values[field.key])}</div>`).join('');
+  form.innerHTML = fields.map(field => `<div class="field ${field.full ? 'full' : ''}">${field.type === 'checkbox' ? '' : `<label for="field-${field.key}">${field.label}</label>`}${inputFor(field, values[field.key], lookups[field.key] || [])}</div>`).join('');
+  fields.filter(field => field.reference?.copy).forEach(field => {
+    form.elements[field.key].addEventListener('change', event => {
+      const selected = (lookups[field.key] || []).find(item => item.id === event.target.value);
+      if (!selected) return;
+      Object.entries(field.reference.copy).forEach(([target, source]) => {
+        if (form.elements[target]) form.elements[target].value = typeof source === 'function' ? source(selected.record) : selected.record[source];
+      });
+    });
+  });
   return form;
 }
 
 export async function createCrudPage(config) {
   setupErrorBoundary();
-  const profile = await requireAuth({ role: config.adminOnly ? 'admin' : null });
+  const profile = await requireAuth({ roles:config.roles || (config.adminOnly ? ['admin'] : null) });
   const page = mountShell(profile || { name: 'Configuração pendente', email: '', role: 'admin' }, { title: config.title, active: config.active });
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading"><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section><section class="toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label>${config.filterHtml || ''}</section><section class="card"><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination"><button class="btn" id="load-more">Carregar mais</button><span id="record-count"></span></div></section>`;
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading"><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section>${config.summary ? '<section class="grid stats-grid" id="page-summary"></section>' : ''}<section class="toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label>${config.filterHtml || ''}</section><section class="card"><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination"><button class="btn" id="load-more">Carregar mais</button><span id="record-count"></span></div></section>`;
   if (!profile) {
     page.querySelector('#records').innerHTML = '<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os registros reais aparecerão aqui.</p></div></div>';
     page.querySelector('#load-more').disabled = true;
@@ -44,6 +54,7 @@ export async function createCrudPage(config) {
 
   const actionButtons = record => `<div class="actions"><button class="btn action-btn" data-action="open" data-id="${record.id}">${getIcon('eye',15)} Abrir</button><button class="btn action-btn" data-action="edit" data-id="${record.id}">${getIcon('edit',15)} Editar</button><button class="btn btn-danger action-btn" data-action="delete" data-id="${record.id}">${getIcon('trash',15)} Excluir</button></div>`;
   const render = () => {
+    if (config.summary) page.querySelector('#page-summary').innerHTML = config.summary(records);
     recordsElement.innerHTML = createTable({ columns: config.columns, records: filtered, actions: actionButtons });
     page.querySelector('#record-count').textContent = `${filtered.length} registro(s)`;
   };
@@ -54,13 +65,19 @@ export async function createCrudPage(config) {
   };
   const load = async append => {
     recordsElement.innerHTML = '<div class="empty"><div class="skeleton" style="width:220px"></div></div>';
-    const result = await listRecords(config.collection, profile.companyId, { after: append ? cursor : null, pageSize: 20 });
+    const result = await listRecords(config.collection, profile.companyId, { after: append ? cursor : null, pageSize: config.pageSize || 20 });
     cursor = result.cursor;
     records = append ? [...records, ...result.records] : result.records;
     applySearch();
   };
-  const openForm = record => {
-    const form = formFor(config.fields, record);
+  const openForm = async record => {
+    const lookupFields = config.fields.filter(field => field.reference);
+    const lookups = {};
+    await Promise.all(lookupFields.map(async field => {
+      const { records: options } = await listRecords(field.reference.collection, profile.companyId, { pageSize:1000 });
+      lookups[field.key] = options.map(option => ({ id:option.id, label:field.reference.label(option), record:option }));
+    }));
+    const form = formFor(config.fields, record, lookups);
     createModal({ title: record ? `Editar ${config.singular}` : config.newLabel || `Novo ${config.singular}`, content: form, confirmText: record ? 'Salvar alterações' : 'Cadastrar', onConfirm: async () => {
       if (!form.reportValidity()) return false;
       const data = Object.fromEntries(new FormData(form));
@@ -77,7 +94,7 @@ export async function createCrudPage(config) {
     createModal({ title: record[config.titleKey] || config.singular, content, confirmText: 'Fechar', cancelText: 'Editar', onConfirm: () => true });
   };
 
-  page.querySelector('#new-record').addEventListener('click', () => openForm(null));
+  page.querySelector('#new-record').addEventListener('click', () => { openForm(null).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); }); });
   page.querySelector('#search').addEventListener('input', applySearch);
   page.querySelector('#load-more').addEventListener('click', () => load(true));
   recordsElement.addEventListener('click', event => {
@@ -85,7 +102,7 @@ export async function createCrudPage(config) {
     if (!button) return;
     const record = records.find(item => item.id === button.dataset.id);
     if (button.dataset.action === 'open') openDetails(record);
-    if (button.dataset.action === 'edit') openForm(record);
+    if (button.dataset.action === 'edit') openForm(record).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); });
     if (button.dataset.action === 'delete') createConfirmDialog(`Enviar ${record[config.titleKey] || 'este registro'} para a lixeira?`, async () => { await softDelete(config.collection, record.id, profile.uid); await writeAudit({companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:'soft_delete',module:config.collection,recordId:record.id,recordCode:record[config.titleKey],oldValue:record}); createToast('Registro enviado para a lixeira.'); await load(false); });
   });
   await load(false);

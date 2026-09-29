@@ -4,12 +4,13 @@ import { mountShell } from '../../app.js';
 import { createModal, createConfirmDialog } from '../../components/modal.js';
 import { createToast } from '../../components/toast.js';
 import { getIcon } from '../../components/icons.js';
-import { createQuoteWithReminder, listRecords, saveRecord, softDelete, writeAudit } from '../../firebase/firestore.js';
+import { createQuoteWithReminder, getCompanySettings, listRecords, saveRecord, softDelete, writeAudit } from '../../firebase/firestore.js';
 import { calculateItem, calculateQuote, currency } from '../../utils/currency.js';
 import { normalizeWhatsapp } from '../../utils/masks.js';
 import { formatDate, greeting } from '../../utils/date.js';
 
 const profile = await requireAuth();
+const companySettings = profile ? await getCompanySettings(profile.companyId) : {};
 const page = mountShell(profile || {name:'Configuração pendente',role:'admin'}, {title:'Orçamentos',active:'orcamentos'});
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
 const statusOptions = ['Rascunho','Enviado','Aguardando resposta','Aprovado','Parcialmente aprovado','Recusado','Cancelado'];
@@ -68,7 +69,8 @@ function openDetails(quote) {
 
 function defaultQuoteValidity() {
   const date = new Date();
-  date.setDate(date.getDate() + 30);
+  const days = Math.min(365, Math.max(1, Number(companySettings.defaultQuoteValidity) || 30));
+  date.setDate(date.getDate() + days);
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 10);
 }

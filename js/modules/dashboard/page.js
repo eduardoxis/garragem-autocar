@@ -2,7 +2,7 @@ import { where, Timestamp } from 'https://www.gstatic.com/firebasejs/12.3.0/fire
 import Chart from 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/auto/+esm';
 import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
-import { countRecords } from '../../firebase/firestore.js';
+import { listRecords } from '../../firebase/firestore.js';
 import { getIcon } from '../../components/icons.js';
 import { currency } from '../../utils/currency.js';
 
@@ -85,19 +85,37 @@ page.innerHTML = `
   </section>`;
 
 if (profile) {
-  const safeCount = async (...args) => {
-    try { return await countRecords(...args); }
-    catch (error) { console.error(error); return 0; }
+  const recordsFor = async collection => {
+    try { return (await listRecords(collection, profile.companyId, { pageSize:1000 })).records; }
+    catch (error) { console.error(error); return []; }
   };
-  const [vehicles, quotes, orders, reminders] = await Promise.all([
-    safeCount('vehicles',profile.companyId), safeCount('quotes',profile.companyId), safeCount('serviceOrders',profile.companyId),
-    safeCount('reminders',profile.companyId,[where('status','==','pending'),where('scheduledAt','<=',Timestamp.now())])
+  const [vehicles, quoteRecords, orderRecords, paymentRecords, productRecords, reminderRecords] = await Promise.all([
+    recordsFor('vehicles'), recordsFor('quotes'), recordsFor('serviceOrders'), recordsFor('payments'), recordsFor('products'), recordsFor('reminders')
   ]);
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dateOf = value => value?.toDate ? value.toDate() : value ? new Date(value) : null;
+  const isCurrentMonth = value => { const date = dateOf(value); return date && date >= monthStart && date <= now; };
+  const openQuotes = quoteRecords.filter(item => !['Aprovado','Recusado','Cancelado'].includes(item.status));
+  const activeOrders = orderRecords.filter(item => !['Finalizado','Entregue','Cancelado'].includes(item.status));
+  const revenueMonth = paymentRecords
+    .filter(item => item.type === 'Receita' && !['Cancelado'].includes(item.status) && isCurrentMonth(item.paidAt || item.createdAt || item.dueDate))
+    .reduce((total, item) => total + Number(item.amount || 0), 0);
+  const dueReminders = reminderRecords.filter(item => item.status === 'pending' && dateOf(item.scheduledAt) <= now);
+  const expiringQuotes = quoteRecords.filter(item => {
+    if (!item.validUntil || ['Aprovado','Recusado','Cancelado'].includes(item.status)) return false;
+    const date = dateOf(`${item.validUntil}T23:59:59`);
+    return date && date >= new Date(now.getFullYear(), now.getMonth(), now.getDate()) && date <= new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+  });
+  const lowStock = productRecords.filter(item => Number(item.minimumStock) > 0 && Number(item.quantity) <= Number(item.minimumStock));
+  const overduePayments = paymentRecords.filter(item => item.dueDate && item.dueDate < today && !['Pago','Cancelado'].includes(item.status));
+  const overdueOrders = orderRecords.filter(item => item.forecastDate && item.forecastDate.slice(0,10) < today && !['Finalizado','Entregue','Cancelado'].includes(item.status));
   const stats = [
-    { icon:'car', label:'Veículos cadastrados', value:vehicles, note:'Total na base', tone:'orange', href:'#veiculos' },
-    { icon:'file', label:'Orçamentos abertos', value:quotes, note:'Aguardando aprovação', tone:'blue', href:'#orcamentos' },
-    { icon:'wrench', label:'OS em andamento', value:orders, note:'Em execução', tone:'green', href:'#ordens-servico' },
-    { icon:'money', label:'Faturamento do mês', value:currency(0), note:'Receita total', tone:'purple', href:'#financeiro' }
+    { icon:'car', label:'Veículos cadastrados', value:vehicles.length, note:'Total na base', tone:'orange', href:'#veiculos' },
+    { icon:'file', label:'Orçamentos abertos', value:openQuotes.length, note:'Aguardando aprovação', tone:'blue', href:'#orcamentos' },
+    { icon:'wrench', label:'OS em andamento', value:activeOrders.length, note:'Em execução', tone:'green', href:'#ordens-servico' },
+    { icon:'money', label:'Faturamento do mês', value:currency(revenueMonth), note:'Receita total', tone:'purple', href:'#financeiro' }
   ];
   page.querySelector('#stats').innerHTML = stats.map(stat=>`
     <a class="card stat-card stat-card--${stat.tone}" href="${stat.href}">
@@ -105,30 +123,49 @@ if (profile) {
       <div class="stat-card__content"><small>${stat.label}</small><strong>${stat.value}</strong><span>${stat.note}</span></div>
       <b class="stat-card__arrow" aria-hidden="true">›</b>
     </a>`).join('');
-  page.querySelector('#alerts').innerHTML = reminders
-    ? `<div class="attention-state attention-state--pending"><span>${getIcon('bell',42)}</span><strong>${reminders} follow-up(s) pendente(s)</strong><p>Existem contatos que precisam da sua atenção.</p><a class="btn btn-primary" href="#orcamentos?filter=followup">Ver pendências</a></div>`
+  const alerts = [
+    ...dueReminders.map(item => ({ label:`${item.customerName || 'Cliente'}: follow-up pendente`, href:'#orcamentos?filter=followup' })),
+    ...expiringQuotes.map(item => ({ label:`${item.code || 'Orçamento'} vence em breve`, href:'#orcamentos' })),
+    ...lowStock.map(item => ({ label:`${item.name || 'Produto'} está no estoque mínimo`, href:'#estoque' })),
+    ...overduePayments.map(item => ({ label:`${item.description || 'Conta'} está vencida`, href:'#financeiro' })),
+    ...overdueOrders.map(item => ({ label:`${item.code || 'OS'} está atrasada`, href:'#ordens-servico' }))
+  ];
+  page.querySelector('#alerts').innerHTML = alerts.length
+    ? `<div class="attention-state attention-state--pending"><span>${getIcon('bell',42)}</span><strong>${alerts.length} pendência(s) para hoje</strong><p>${alerts.slice(0,3).map(item => `<a class="attention-link" href="${item.href}">${item.label}</a>`).join('')}</p><a class="btn btn-primary" href="${alerts[0].href}">Ver pendências</a></div>`
     : `<div class="attention-state"><span>${getIcon('calendar',44)}</span><strong>Nenhuma pendência hoje</strong><p>Não existem follow-ups pendentes no momento.</p><a class="btn btn-primary" href="#orcamentos?filter=followup">Ver pendências</a></div>`;
-  new Chart(page.querySelector('#revenue-chart'), {
-    type:'line',
-    data:{
-      labels:['Sem. 1','Sem. 2','Sem. 3','Sem. 4'],
-      datasets:[
-        {label:'Ordens de Serviço',data:[0,0,0,0],borderColor:'#f47700',backgroundColor:'rgba(244,119,0,.08)',pointBackgroundColor:'#fff',pointBorderColor:'#f47700',pointBorderWidth:2,fill:true,tension:.35},
-        {label:'Orçamentos',data:[0,0,0,0],borderColor:'#1769e0',pointBackgroundColor:'#1769e0',tension:.35},
-        {label:'Faturamento',data:[0,0,0,0],borderColor:'#16a05d',pointBackgroundColor:'#16a05d',tension:.35}
-      ]
-    },
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,padding:22,color:'#667085',font:{weight:600}}}},
-      scales:{
-        x:{grid:{color:'rgba(148,163,184,.16)'},ticks:{color:'#737b88'}},
-        y:{beginAtZero:true,grid:{color:'rgba(148,163,184,.18)'},ticks:{color:'#737b88',precision:0}}
-      }
+  const buildChartData = days => {
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+    const labels = [];
+    const series = { orders:[], quotes:[], revenue:[] };
+    for (let index = 0; index < days; index += 1) {
+      const day = new Date(start); day.setDate(start.getDate() + index);
+      const nextDay = new Date(day); nextDay.setDate(day.getDate() + 1);
+      labels.push(day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+      const createdToday = records => records.filter(item => { const date = dateOf(item.createdAt); return date && date >= day && date < nextDay; });
+      series.orders.push(createdToday(orderRecords).length);
+      series.quotes.push(createdToday(quoteRecords).length);
+      series.revenue.push(paymentRecords.filter(item => item.type === 'Receita' && isCurrentMonth(item.paidAt || item.createdAt) && (() => { const date=dateOf(item.paidAt || item.createdAt); return date && date >= day && date < nextDay; })()).reduce((total,item)=>total+Number(item.amount||0),0));
     }
+    return { labels, series };
+  };
+  const chart = new Chart(page.querySelector('#revenue-chart'), {
+    type:'line',
+    data:{ labels:[], datasets:[] },
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false}, plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,padding:22,color:'#667085',font:{weight:600}}}}, scales:{x:{grid:{color:'rgba(148,163,184,.16)'},ticks:{color:'#737b88'}},y:{beginAtZero:true,grid:{color:'rgba(148,163,184,.18)'},ticks:{color:'#737b88',precision:0}}} }
   });
+  const refreshChart = () => {
+    const days = Number(page.querySelector('#chart-period').value);
+    const { labels, series } = buildChartData(days);
+    chart.data.labels = labels;
+    chart.data.datasets = [
+      {label:'Ordens de Serviço',data:series.orders,borderColor:'#f47700',backgroundColor:'rgba(244,119,0,.08)',pointBackgroundColor:'#fff',pointBorderColor:'#f47700',pointBorderWidth:2,fill:true,tension:.35},
+      {label:'Orçamentos',data:series.quotes,borderColor:'#1769e0',pointBackgroundColor:'#1769e0',tension:.35},
+      {label:'Faturamento',data:series.revenue,borderColor:'#16a05d',pointBackgroundColor:'#16a05d',tension:.35}
+    ];
+    chart.update();
+  };
+  refreshChart();
+  page.querySelector('#chart-period').addEventListener('change', refreshChart);
 } else {
   const stats = [['car','Veículos na oficina','—'],['file','Orçamentos abertos','—'],['wrench','OS em andamento','—'],['money','Faturamento do mês','—']];
   page.querySelector('#stats').innerHTML = stats.map(([icon,label,value])=>`<article class="card stat-card"><span class="stat-icon">${getIcon(icon)}</span><div><small>${label}</small><strong>${value}</strong></div></article>`).join('');

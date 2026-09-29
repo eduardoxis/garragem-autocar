@@ -2,9 +2,14 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.3.0/fi
 import { auth, isFirebaseConfigured } from './firebase/firebase-config.js';
 import { getProfile } from './firebase/firestore.js';
 
-const userAllowedPages = new Set(['clientes', 'orcamentos', 'perfil']);
+const allowedPagesByRole = {
+  user: new Set(['clientes', 'orcamentos', 'perfil']),
+  atendente: new Set(['clientes', 'veiculos', 'orcamentos', 'agenda', 'perfil']),
+  mecanico: new Set(['oficina', 'ordens-servico', 'perfil']),
+  financeiro: new Set(['financeiro', 'perfil'])
+};
 
-export function requireAuth({ role = null, module = document.body.dataset.module } = {}) {
+export function requireAuth({ role = null, roles = null, module = document.body.dataset.module } = {}) {
   return new Promise(resolve => {
     if (!isFirebaseConfigured) {
       document.documentElement.dataset.setupRequired = 'true';
@@ -22,10 +27,12 @@ export function requireAuth({ role = null, module = document.body.dataset.module
         location.replace('/login.html?inactive=1');
         return;
       }
-      const denied = (role && profile.role !== role) || (profile.role === 'user' && module && !userAllowedPages.has(module));
+      const allowedPages = allowedPagesByRole[profile.role];
+      const denied = (role && profile.role !== role) || (roles && !roles.includes(profile.role)) || (allowedPages && module && !allowedPages.has(module));
       if (denied) {
-        if (profile.role === 'user') {
-          location.replace('/index.html#clientes');
+        if (allowedPages) {
+          const firstPage = [...allowedPages][0] || 'perfil';
+          location.replace(`/index.html#${firstPage}`);
           return;
         }
         location.replace('/login.html?denied=1');

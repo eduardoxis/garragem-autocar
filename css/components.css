@@ -70,6 +70,7 @@
 .attention-state>span { color:#aeb5bf; }
 .attention-state>strong { margin-top:16px; font-size:.98rem; }
 .attention-state p { margin:7px 0 19px; color:var(--muted); font-size:.82rem; line-height:1.45; }
+.attention-state .attention-link { display:block; margin:5px 0; color:#697586; text-decoration:underline; text-decoration-color:#d7dce3; text-underline-offset:3px; }
 .attention-state--pending>span { color:var(--primary); }
 
 .quick-actions-card { padding:16px 18px 18px; border-color:#e3e7ec; }

@@ -34,6 +34,11 @@ export async function listRecords(collectionName, companyId, options = {}) {
   return { records, cursor: { offset: offset + records.length } };
 }
 
+export async function getCompanySettings(companyId) {
+  const snap = await getDoc(doc(db, 'companies', companyId));
+  return snap.exists() ? snap.data() : {};
+}
+
 export async function saveRecord(collectionName, companyId, data, id = null) {
   const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
   if (id) {
