@@ -224,3 +224,56 @@ html[data-setup-required="true"] .setup-banner { display: block; }
   .admin-card { min-height: 120px; }
   .admin-users .card-header { align-items: stretch; flex-direction: column; }
 }
+
+/* Hierarquia tipográfica oficial */
+html { font-size:16px; }
+body { font-size:14px; }
+.page-heading h1,
+.module-page .page-hero h1,
+.dashboard-reference-hero h1,
+.dashboard-welcome h1,
+.quote-editor-heading h1 { font-size:26px; line-height:1.15; }
+.header h2 { font-size:20px; }
+.card-header h2,
+.card-header h3,
+.module-list-header h2,
+.reference-card-header h2,
+.dashboard-card-title h2,
+.quick-actions-header h2,
+.agenda-calendar-header h2 { font-size:20px; line-height:1.2; }
+.stat-card strong,
+.metric-card strong,
+.dashboard-stats .stat-card__content strong { font-size:26px; line-height:1.1; }
+.page-heading p,
+.input,.select,.textarea,
+.table th,.table td,
+.field > div,
+.pagination { font-size:14px; }
+.page-heading p,
+.module-list-header p,
+.reference-card-header p,
+.dashboard-card-title p,
+.field label,
+.stat-card small,
+.metric-card small,
+.badge,
+.image-upload small { font-size:12px; }
+.action-btn,
+.row-menu button,
+.btn.btn-icon,
+.reference-see-all { font-size:12px; }
+
+@media (max-width:760px) {
+  .page-heading h1,
+  .module-page .page-hero h1,
+  .dashboard-reference-hero h1,
+  .dashboard-welcome h1,
+  .quote-editor-heading h1 { font-size:24px; }
+  .card-header h2,
+  .card-header h3,
+  .module-list-header h2,
+  .reference-card-header h2,
+  .dashboard-card-title h2,
+  .quick-actions-header h2,
+  .agenda-calendar-header h2 { font-size:18px; }
+}
