@@ -11,8 +11,8 @@
 .nav-link svg { flex: 0 0 auto; }
 .sidebar-user { padding: 14px 20px 20px; border-top: 1px solid var(--border); background: #fff; }
 .user-card { display: flex; align-items: center; gap: 11px; padding: 12px; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 14px; }
-.avatar { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; color: #fff; background: linear-gradient(145deg,#aeb8c6,#7d8999); border-radius: 50%; box-shadow: inset 0 1px 1px rgba(255,255,255,.28); }
-.avatar svg { stroke-width: 2; }
+.avatar { display: grid; place-items: center; width: 46px; height: 46px; aspect-ratio: 1; flex: 0 0 auto; overflow: hidden; color: #fff; line-height: 0; background: linear-gradient(145deg,#aeb8c6,#7d8999); border-radius: 50%; box-shadow: inset 0 1px 1px rgba(255,255,255,.28); }
+.avatar svg { width: 25px; height: 25px; margin: auto; stroke-width: 2; }
 .user-card span { display: block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; font-weight: 700; }
 .user-card small { color: var(--muted); }
 .logout-btn { justify-content:flex-start; width: 100%; margin-top: 12px; color: #344054; background: transparent; border: 0; }
