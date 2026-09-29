@@ -58,7 +58,7 @@ export async function createCrudPage(config) {
   const recordsElement = page.querySelector('#records');
   const metricsElement = page.querySelector('#page-summary');
 
-  const actionButtons = record => `<details class="row-menu"><summary class="btn btn-icon" aria-label="Ações">${getIcon('more',18)}</summary><div><button type="button" data-action="open" data-id="${record.id}">${getIcon('eye',15)} Abrir</button><button type="button" data-action="edit" data-id="${record.id}">${getIcon('edit',15)} Editar</button><button type="button" class="danger" data-action="delete" data-id="${record.id}">${getIcon('trash',15)} Excluir</button></div></details>`;
+  const actionButtons = record => `<div class="crud-actions" aria-label="Ações do registro"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${record.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${record.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${record.id}">${getIcon('trash',13)} Excluir</button></div>`;
   const render = () => {
     if (metricsElement) {
       const now = new Date();

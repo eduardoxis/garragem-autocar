@@ -180,6 +180,20 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .row-menu button { display:flex; align-items:center; gap:7px; padding:8px 9px; color:var(--text); background:transparent; border:0; border-radius:7px; font-size:.75rem; text-align:left; }
 .row-menu button:hover { background:#f5f7fa; }
 .row-menu button.danger { color:var(--danger); }
+.crud-actions { display:flex; align-items:center; gap:6px; width:max-content; white-space:nowrap; }
+.crud-action { min-height:30px; display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:5px 9px; border:1px solid; border-radius:7px; font-family:inherit; font-size:12px; font-weight:700; line-height:1; cursor:pointer; transition:border-color .16s ease,background-color .16s ease,transform .16s ease; }
+.crud-action:hover { transform:translateY(-1px); }
+.crud-action:focus-visible { outline:2px solid #ff7a1a; outline-offset:2px; }
+.crud-action--open { color:#344054; background:#f3f6fa; border-color:#dce3eb; }
+.crud-action--open:hover { background:#e9eef5; border-color:#c8d2df; }
+.crud-action--pdf { color:#067647; background:#ecfdf3; border-color:#abefc6; }
+.crud-action--pdf:hover { background:#dcfae6; border-color:#75e0a7; }
+.crud-action--edit { color:#175cd3; background:#eff4ff; border-color:#b2ccff; }
+.crud-action--edit:hover { background:#dbe7ff; border-color:#84adff; }
+.crud-action--delete { color:#d92d20; background:#fff1f0; border-color:#fecdca; }
+.crud-action--delete:hover { background:#fee4e2; border-color:#fda29b; }
+.module-page .table th:last-child,
+.module-page .table td:last-child { white-space:nowrap; }
 .vehicle-cell { display:flex; align-items:center; gap:9px; }
 .vehicle-cell > img,.vehicle-cell > span { width:48px; height:30px; object-fit:cover; flex:0 0 auto; background:#f1f4f8; border-radius:6px; }
 .vehicle-cell > span { display:grid; place-items:center; color:var(--muted); }
@@ -260,6 +274,7 @@ body { font-size:14px; }
 .image-upload small { font-size:12px; }
 .action-btn,
 .row-menu button,
+.crud-action,
 .btn.btn-icon,
 .reference-see-all { font-size:12px; }
 
