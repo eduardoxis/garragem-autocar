@@ -15,7 +15,7 @@ export function createSidebar(profile, active) {
   return `<aside class="sidebar">
     <a class="sidebar-brand" href="${profile.role === 'admin' ? '#dashboard' : '#clientes'}"><img class="brand-logo" src="assets/garagem-auto-car-logo.png" alt="Garagem Auto Car"><span><strong>GARAGEM AUTO CAR</strong><small>GESTÃO DE OFICINA</small></span></a>
     <nav class="sidebar-nav" aria-label="Menu principal">${items.map(([icon,label,url]) => `<a class="nav-link ${active === routeName(url) ? 'active' : ''}" href="${url}">${getIcon(icon)}<span>${label}</span></a>`).join('')}</nav>
-    <div class="sidebar-user"><div class="user-card"><span class="avatar">${(profile.name || profile.email || 'U')[0].toUpperCase()}</span><span><span>${profile.name || profile.email}</span><small>${profile.role === 'admin' ? 'Administrador' : 'Usuário'}</small></span></div><button class="btn logout-btn" data-action="logout">${getIcon('logout')} Sair</button></div>
+    <div class="sidebar-user"><div class="user-card"><span class="avatar" aria-hidden="true">${getIcon('user',24)}</span><span><span>${profile.name || profile.email}</span><small>${profile.role === 'admin' ? 'Administrador' : 'Usuário'}</small></span></div><button class="btn logout-btn" data-action="logout">${getIcon('logout')} Sair</button></div>
   </aside>`;
 }
 
