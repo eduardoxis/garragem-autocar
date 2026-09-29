@@ -18,7 +18,7 @@ page.innerHTML = `
   <section class="dashboard-intro">
     <div class="dashboard-welcome">
       <span class="dashboard-eyebrow">Bem-vindo de volta</span>
-      <h1>Olá, ${firstName}! <span aria-hidden="true">👋</span></h1>
+      <h1>Olá, ${firstName}!</h1>
       <p>Aqui está um resumo da sua oficina hoje.</p>
     </div>
     <aside class="workshop-banner" aria-label="Gestão completa para sua oficina">
