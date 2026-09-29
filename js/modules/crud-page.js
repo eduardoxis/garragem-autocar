@@ -6,6 +6,7 @@ import { createToast } from '../components/toast.js';
 import { getIcon } from '../components/icons.js';
 import { listRecords, saveRecord, softDelete, writeAudit } from '../firebase/firestore.js';
 import { formatDate } from '../utils/date.js';
+import { imageFileToDataUrl } from '../utils/image.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
 
@@ -16,6 +17,7 @@ function inputFor(field, value = '', lookupOptions = []) {
   if (field.type === 'select') return `<select ${common}>${(field.options || []).map(option => `<option value="${escapeHtml(option.value ?? option)}" ${String(option.value ?? option) === String(value) ? 'selected' : ''}>${escapeHtml(option.label ?? option)}</option>`).join('')}</select>`;
   if (field.type === 'textarea') return `<textarea ${common}>${escapeHtml(value)}</textarea>`;
   if (field.type === 'checkbox') return `<label class="checkbox-row"><input name="${field.key}" type="checkbox" ${value ? 'checked' : ''}> ${field.help || field.label}</label>`;
+  if (field.type === 'image') return `<div class="image-upload">${value ? `<img src="${escapeHtml(value)}" alt="Prévia da imagem atual">` : ''}<input class="input" name="${field.key}" id="field-${field.key}" type="file" accept="image/*"><small>Selecione uma imagem de até 5 MB. Ela será otimizada antes de salvar.</small></div>`;
   return `<input ${common} type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
 }
 
@@ -102,10 +104,17 @@ export async function createCrudPage(config) {
     createModal({ title: record ? `Editar ${config.singular}` : config.newLabel || `Novo ${config.singular}`, content: form, confirmText: record ? 'Salvar alterações' : 'Cadastrar', onConfirm: async () => {
       if (!form.reportValidity()) return false;
       const data = Object.fromEntries(new FormData(form));
+      for (const field of config.fields.filter(item => item.type === 'image')) {
+        const file = data[field.key];
+        delete data[field.key];
+        if (file?.size) data[field.key] = await imageFileToDataUrl(file);
+        else if (record?.[field.key]) data[field.key] = record[field.key];
+      }
       config.fields.filter(field => field.type === 'checkbox').forEach(field => { data[field.key] = form.elements[field.key].checked; });
       const normalized = config.normalize ? config.normalize(data, record) : data;
       const recordId = await saveRecord(config.collection, profile.companyId, normalized, record?.id);
-      await writeAudit({ companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:record?'update':'create',module:config.collection,recordId,recordCode:normalized[config.titleKey],oldValue:record,newValue:normalized });
+      const auditValue = Object.fromEntries(Object.entries(normalized).filter(([key]) => !config.fields.some(field => field.type === 'image' && field.key === key)));
+      await writeAudit({ companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:record?'update':'create',module:config.collection,recordId,recordCode:normalized[config.titleKey],oldValue:record,newValue:auditValue });
       createToast(`${config.singular} ${record ? 'atualizado' : 'cadastrado'} com sucesso.`);
       await load(false);
     }});

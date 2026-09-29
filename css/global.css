@@ -96,6 +96,9 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .login-card p { color: var(--muted); }
 .login-form { display: grid; gap: 16px; margin-top: 24px; }
 .checkbox-row { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: .9rem; }
+.image-upload { display: grid; gap: 10px; }
+.image-upload img { width: 112px; height: 82px; object-fit: cover; border: 1px solid var(--border); border-radius: 10px; }
+.image-upload small { color: var(--muted); font-size: .78rem; }
 .password-field { position: relative; }
 .password-field .input { padding-right: 48px; }
 .password-field button { position: absolute; right: 5px; top: 5px; border: 0; background: transparent; }

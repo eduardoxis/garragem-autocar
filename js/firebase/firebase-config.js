@@ -6,7 +6,6 @@ export const firebaseConfig = {
   apiKey: 'AIzaSyDqYz5K62d-oFHou8a7PP7ml3UAqa8UGOo',
   authDomain: 'garragem-autocar.firebaseapp.com',
   projectId: 'garragem-autocar',
-  storageBucket: 'garragem-autocar.firebasestorage.app',
   messagingSenderId: '181808845708',
   appId: '1:181808845708:web:ebd452d12c56919e0bfca9'
 };
