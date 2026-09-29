@@ -5,7 +5,7 @@ import { createToast } from '../../components/toast.js';
 import { getIcon } from '../../components/icons.js';
 import { createQuoteWithReminder, getCompanySettings, listRecords, saveRecord, softDelete, writeAudit } from '../../firebase/firestore.js';
 import { calculateItem, calculateQuote, currency } from '../../utils/currency.js';
-import { normalizeWhatsapp } from '../../utils/masks.js';
+import { applyInputMasks, formDataObject, normalizeWhatsapp, parseCurrencyInput } from '../../utils/masks.js';
 import { formatDate, greeting } from '../../utils/date.js';
 
 const profile = await requireAuth();
@@ -45,8 +45,9 @@ function openFollowUp(quote) {
   const form = document.createElement('form');
   form.className = 'form-grid';
   form.innerHTML = `<div class="field full"><label>Mensagem</label><textarea class="textarea" name="message" rows="8">${escapeHtml(followUpMessage(quote))}</textarea></div><div class="field"><label>Tipo de contato</label><select class="select" name="contactType"><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></div><div class="field"><label>Resultado</label><select class="select" name="result"><option>Aguardando resposta</option><option>Cliente pediu mais tempo</option><option>Cliente aprovou</option><option>Cliente recusou</option><option>Não respondeu</option></select></div><div class="field"><label>Próximo contato</label><input class="input" name="nextContactAt" type="datetime-local"></div><div class="field"><label>WhatsApp</label><input class="input" name="whatsapp" value="${escapeHtml(quote.whatsapp || '')}"></div><div class="field full"><label>Observação</label><textarea class="textarea" name="notes"></textarea></div><div class="field full actions"><button class="btn" type="button" id="copy-message">Copiar mensagem</button>${quote.whatsapp ? `<a class="btn btn-success" id="open-whatsapp" target="_blank" rel="noopener">${getIcon('whatsapp')} Abrir WhatsApp</a>` : ''}</div>`;
+  applyInputMasks(form);
   const modal = createModal({title:`Follow-up ${quote.code}`,content:form,confirmText:'Registrar contato',onConfirm:async()=>{
-    const data = Object.fromEntries(new FormData(form));
+    const data = formDataObject(form);
     await saveRecord('quoteFollowUps',profile.companyId,{...data,quoteId:quote.id,quoteCode:quote.code,customerName:quote.customerName,userId:profile.uid,userName:profile.name,step:1});
     const status = data.result === 'Cliente aprovou' ? 'Aprovado' : data.result === 'Cliente recusou' ? 'Recusado' : 'Aguardando resposta';
     await saveRecord('quotes',profile.companyId,{status,whatsapp:data.whatsapp},quote.id);
@@ -101,18 +102,20 @@ function quoteEditor(record = {}) {
     </div></section>
     <section class="card quote-section quote-products"><header class="card-header"><h2>Produtos / itens</h2><button class="btn btn-primary" type="button" id="add-item">${getIcon('plus')} Adicionar item</button></header><div class="card-body"><div class="table-wrap"><table class="table quote-items"><thead><tr><th>#</th><th>Descrição / produto</th><th>Marca</th><th>Unid.</th><th>Qtd.</th><th>Valor unit.</th><th>Valor total</th><th></th></tr></thead><tbody></tbody><tfoot><tr><td colspan="6">Valor total do orçamento</td><td id="quote-total">${currency(0)}</td><td></td></tr></tfoot></table></div></div></section>
   </form>`;
+  applyInputMasks(root);
   const form = root.querySelector('#quote-form');
   const tbody = root.querySelector('tbody');
   const total = root.querySelector('#quote-total');
   const updateTotal = () => { total.textContent = currency(calculateQuote(items)); };
   const drawItems = () => {
-    tbody.innerHTML = items.map((item,index)=>`<tr data-index="${index}"><td><strong>${index + 1}</strong><input type="hidden" data-key="type" value="${escapeHtml(item.type || 'Peça')}"></td><td><input class="input" data-key="description" value="${escapeHtml(item.description || '')}" placeholder="Descrição do produto ou serviço"></td><td><input class="input" data-key="brand" value="${escapeHtml(item.brand || '')}" placeholder="Marca"></td><td><input class="input item-unit" data-key="unit" value="${escapeHtml(item.unit || 'UN')}"></td><td><input class="input item-number" data-key="quantity" type="number" min="0" step=".01" value="${Number(item.quantity) || 0}"></td><td><input class="input item-price" data-key="unitPrice" type="number" min="0" step=".01" value="${Number(item.unitPrice) || 0}"></td><td><strong class="item-total">${currency(calculateItem(item))}</strong></td><td><button class="btn btn-danger btn-icon" type="button" data-remove="${index}" aria-label="Remover item">${getIcon('trash',15)}</button></td></tr>`).join('');
+    tbody.innerHTML = items.map((item,index)=>`<tr data-index="${index}"><td><strong>${index + 1}</strong><input type="hidden" data-key="type" value="${escapeHtml(item.type || 'Peça')}"></td><td><input class="input" data-key="description" value="${escapeHtml(item.description || '')}" placeholder="Descrição do produto ou serviço"></td><td><input class="input" data-key="brand" value="${escapeHtml(item.brand || '')}" placeholder="Marca"></td><td><input class="input item-unit" data-key="unit" value="${escapeHtml(item.unit || 'UN')}"></td><td><input class="input item-number" data-key="quantity" type="number" min="0" step=".01" value="${Number(item.quantity) || 0}" placeholder="Ex.: 1"></td><td><input class="input item-price" data-key="unitPrice" data-mask="currency" value="${Number(item.unitPrice) || 0}" placeholder="Ex.: 2.500,00"></td><td><strong class="item-total">${currency(calculateItem(item))}</strong></td><td><button class="btn btn-danger btn-icon" type="button" data-remove="${index}" aria-label="Remover item">${getIcon('trash',15)}</button></td></tr>`).join('');
+    applyInputMasks(tbody);
     updateTotal();
   };
   tbody.addEventListener('input',event=>{
     const row = event.target.closest('tr'); const key = event.target.dataset.key;
     if (!row || !key) return;
-    const item = items[Number(row.dataset.index)]; item[key] = event.target.type === 'number' ? Number(event.target.value) : event.target.value;
+    const item = items[Number(row.dataset.index)]; item[key] = key === 'unitPrice' ? parseCurrencyInput(event.target.value) : event.target.type === 'number' ? Number(event.target.value) : event.target.value;
     row.querySelector('.item-total').textContent = currency(calculateItem(item)); updateTotal();
   });
   tbody.addEventListener('click',event=>{const button=event.target.closest('[data-remove]');if(!button)return;items.splice(Number(button.dataset.remove),1);drawItems();});
@@ -129,7 +132,7 @@ function showEditor(record = null) {
   editor.root.querySelector('#cancel-editor').addEventListener('click',cancel);
   editor.root.querySelector('#cancel-editor-top').addEventListener('click',cancel);
   const values = () => {
-    const data = Object.fromEntries(new FormData(editor.form));
+    const data = formDataObject(editor.form);
     data.items = editor.items; data.total = calculateQuote(editor.items);
     data.whatsapp = data.whatsapp ? normalizeWhatsapp(data.whatsapp).replace(/^55/,'') : '';
     data.code = record?.code || `ORC-${Date.now().toString().slice(-6)}`;

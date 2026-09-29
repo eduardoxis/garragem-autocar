@@ -1,4 +1,7 @@
 import { openAdminPanel } from './modules/administracao/modal.js';
+import { installInputMasks } from './utils/masks.js';
+
+installInputMasks();
 
 const routes = {
   dashboard: ['Dashboard', './modules/dashboard/page.js'],

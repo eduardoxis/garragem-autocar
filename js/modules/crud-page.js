@@ -7,18 +7,20 @@ import { getIcon } from '../components/icons.js';
 import { listRecords, saveRecord, softDelete, writeAudit } from '../firebase/firestore.js';
 import { formatDate } from '../utils/date.js';
 import { imageFileToDataUrl } from '../utils/image.js';
+import { applyInputMasks, formDataObject } from '../utils/masks.js';
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' }[char]));
 
 function inputFor(field, value = '', lookupOptions = []) {
   const required = field.required ? 'required' : '';
   const common = `class="${field.type === 'textarea' ? 'textarea' : field.type === 'select' ? 'select' : 'input'}" name="${field.key}" id="field-${field.key}" ${required}`;
+  const numericPlaceholder = field.type === 'number' ? (/ano/i.test(field.label) ? 'Ex.: 2026' : /quilometragem/i.test(field.label) ? 'Ex.: 85000' : 'Ex.: 0') : '';
   if (field.reference) return `<select class="select" name="${field.key}" id="field-${field.key}" ${required}><option value="">${field.reference.placeholder || 'Selecione...'}</option>${lookupOptions.map(option => `<option value="${escapeHtml(option.id)}" ${String(option.id) === String(value) ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}</select>`;
   if (field.type === 'select') return `<select ${common}>${(field.options || []).map(option => `<option value="${escapeHtml(option.value ?? option)}" ${String(option.value ?? option) === String(value) ? 'selected' : ''}>${escapeHtml(option.label ?? option)}</option>`).join('')}</select>`;
   if (field.type === 'textarea') return `<textarea ${common}>${escapeHtml(value)}</textarea>`;
   if (field.type === 'checkbox') return `<label class="checkbox-row"><input name="${field.key}" type="checkbox" ${value ? 'checked' : ''}> ${field.help || field.label}</label>`;
   if (field.type === 'image') return `<div class="image-upload">${value ? `<img src="${escapeHtml(value)}" alt="Prévia da imagem atual">` : ''}<input class="input" name="${field.key}" id="field-${field.key}" type="file" accept="image/*"><small>Selecione uma imagem de até 5 MB. Ela será otimizada antes de salvar.</small></div>`;
-  return `<input ${common} type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
+  return `<input ${common} type="${field.type || 'text'}" value="${escapeHtml(value)}" ${field.placeholder || numericPlaceholder ? `placeholder="${escapeHtml(field.placeholder || numericPlaceholder)}"` : ''}>`;
 }
 
 function formFor(fields, record = null, lookups = {}) {
@@ -26,6 +28,7 @@ function formFor(fields, record = null, lookups = {}) {
   const form = document.createElement('form');
   form.className = 'form-grid';
   form.innerHTML = fields.map(field => `<div class="field ${field.full ? 'full' : ''}">${field.type === 'checkbox' ? '' : `<label for="field-${field.key}">${field.label}</label>`}${inputFor(field, values[field.key], lookups[field.key] || [])}</div>`).join('');
+  applyInputMasks(form);
   fields.filter(field => field.reference?.copy).forEach(field => {
     form.elements[field.key].addEventListener('change', event => {
       const selected = (lookups[field.key] || []).find(item => item.id === event.target.value);
@@ -114,7 +117,7 @@ export async function createCrudPage(config) {
     const form = formFor(config.fields, record, lookups);
     createModal({ title: record ? `Editar ${config.singular}` : config.newLabel || `Novo ${config.singular}`, content: form, confirmText: record ? 'Salvar alterações' : 'Cadastrar', onConfirm: async () => {
       if (!form.reportValidity()) return false;
-      const data = Object.fromEntries(new FormData(form));
+      const data = formDataObject(form);
       for (const field of config.fields.filter(item => item.type === 'image')) {
         const file = data[field.key];
         delete data[field.key];
