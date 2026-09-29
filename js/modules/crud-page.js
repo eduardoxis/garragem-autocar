@@ -51,11 +51,21 @@ export async function createCrudPage(config) {
   let filtered = [];
   let cursor = null;
   const recordsElement = page.querySelector('#records');
+  const metricsElement = config.summary ? null : Object.assign(document.createElement('section'), { className:'grid stats-grid generic-metrics' });
+  if (metricsElement) page.querySelector('.toolbar').before(metricsElement);
 
   const actionButtons = record => `<div class="actions"><button class="btn action-btn" data-action="open" data-id="${record.id}">${getIcon('eye',15)} Abrir</button><button class="btn action-btn" data-action="edit" data-id="${record.id}">${getIcon('edit',15)} Editar</button><button class="btn btn-danger action-btn" data-action="delete" data-id="${record.id}">${getIcon('trash',15)} Excluir</button></div>`;
   const render = () => {
     if (config.summary) page.querySelector('#page-summary').innerHTML = config.summary(records);
-    recordsElement.innerHTML = createTable({ columns: config.columns, records: filtered, actions: actionButtons });
+    if (metricsElement) {
+      const now = new Date();
+      const newThisMonth = records.filter(item => {
+        const createdAt = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || 0);
+        return createdAt.getFullYear() === now.getFullYear() && createdAt.getMonth() === now.getMonth();
+      }).length;
+      metricsElement.innerHTML = `<article class="card stat-card"><span class="stat-icon">${getIcon('file',22)}</span><div><small>Total de ${config.title}</small><strong>${records.length}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('plus',22)}</span><div><small>Novos no mês</small><strong>${newThisMonth}</strong></div></article><article class="card stat-card"><span class="stat-icon">${getIcon('search',22)}</span><div><small>Registros exibidos</small><strong>${filtered.length}</strong></div></article>`;
+    }
+    recordsElement.innerHTML = createTable({ columns: config.columns, records: filtered, actions: actionButtons, emptyActionLabel:config.newLabel || `Cadastrar ${config.singular}` });
     page.querySelector('#record-count').textContent = `${filtered.length} registro(s)`;
   };
   const applySearch = () => {
@@ -100,6 +110,7 @@ export async function createCrudPage(config) {
   recordsElement.addEventListener('click', event => {
     const button = event.target.closest('[data-action]');
     if (!button) return;
+    if (button.dataset.action === 'new') { openForm(null).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); }); return; }
     const record = records.find(item => item.id === button.dataset.id);
     if (button.dataset.action === 'open') openDetails(record);
     if (button.dataset.action === 'edit') openForm(record).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); });

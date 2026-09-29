@@ -59,7 +59,11 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .badge-warning { color: #8d5700; background: var(--warning-soft); }
 .badge-danger { color: #a31919; background: var(--danger-soft); }
 .empty { display: grid; place-items: center; min-height: 380px; padding: 30px; color: var(--muted); text-align: center; }
+.empty-content { display:grid; justify-items:center; gap:12px; }
+.empty-icon { width:94px; height:94px; display:grid; place-items:center; color:#263346; background:radial-gradient(circle at 50% 40%,#fff,#edf1f7); border-radius:50%; box-shadow:0 10px 26px rgba(16,24,40,.06); }
+.empty-icon svg { stroke-width:1.7; }
 .empty strong { color: var(--text); font-size: 1.32rem; }
+.empty p { margin:0 0 12px; }
 .skeleton { min-height: 18px; border-radius: 6px; background: linear-gradient(90deg,#edf1f6 25%,#f8fafc 50%,#edf1f6 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(4,18,54,.62); backdrop-filter: blur(4px); }
