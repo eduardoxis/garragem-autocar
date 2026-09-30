@@ -40,6 +40,8 @@
 .notification-item b { color:var(--primary); font-size:12px; }
 .notifications-empty { min-height:190px; display:grid; justify-items:center; align-content:center; gap:8px; padding:22px; color:var(--muted); text-align:center; }.notifications-empty svg { color:#12b76a; }.notifications-empty strong { color:var(--text); font-size:14px; }.notifications-empty span { font-size:12px; }
 .notifications-panel footer { padding:12px 16px; background:#fafbfc; text-align:center; }.notifications-panel footer a { color:var(--primary); font-size:12px; font-weight:750; }
+.follow-up-hint { grid-column:1 / -1; margin:0; padding:10px 12px; color:#8a4b00; background:#fff7e6; border:1px solid #fedf89; border-radius:9px; font-size:12px; }
+.crud-action--reminder { color:#a15c00; background:#fff7e6; border-color:#fedf89; }
 .form-error { grid-column: 1 / -1; margin: 0; padding: 10px 12px; color: #a61b1b; background: #fff0f0; border: 1px solid #ffc9c9; border-radius: 9px; font-size: .8rem; font-weight: 650; }
 .header-date { min-height: 40px; display: inline-flex; align-items: center; gap: 9px; padding: 0 14px; color: #596273; background: #fbfcfd; border: 1px solid #e0e5eb; border-radius: 11px; font-size: .76rem; font-weight: 650; box-shadow: 0 4px 12px rgba(17,24,39,.035); }
 .header-date svg { color: #778190; }

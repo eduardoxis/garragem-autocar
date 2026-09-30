@@ -44,18 +44,18 @@ export const softDelete = (collectionName, id, userId) => updateDoc(doc(db, coll
   deleted: true, deletedAt: serverTimestamp(), deletedBy: userId, updatedAt: serverTimestamp()
 });
 
-export async function createQuoteWithReminder(quote, companyId) {
+export async function createQuoteWithReminder(quote, companyId, followUpDays = 4) {
   const quoteRef = doc(collection(db, 'quotes'));
   const reminderRef = doc(collection(db, 'reminders'));
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(9, 0, 0, 0);
+  const nextFollowUpAt = new Date();
+  nextFollowUpAt.setDate(nextFollowUpAt.getDate() + Math.max(1, Number(followUpDays) || 4));
+  nextFollowUpAt.setHours(9, 0, 0, 0);
   const batch = writeBatch(db);
-  batch.set(quoteRef, { ...quote, companyId, deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  batch.set(quoteRef, { ...quote, companyId, followUpStep: 0, nextFollowUpAt, reminderId: reminderRef.id, deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   batch.set(reminderRef, {
     companyId, type: 'quote_follow_up', step: 1, quoteId: quoteRef.id,
     customerId: quote.customerId || null, customerName: quote.customerName,
-    whatsapp: quote.whatsapp || '', scheduledAt: tomorrow, status: 'pending',
+    whatsapp: quote.whatsapp || '', scheduledAt: nextFollowUpAt, status: 'pending',
     deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   });
   await batch.commit();

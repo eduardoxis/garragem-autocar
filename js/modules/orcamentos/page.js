@@ -23,6 +23,10 @@ let totalQuotes = 0;
 let hasMoreQuotes = false;
 
 const statusClass = status => status === 'Aprovado' ? 'badge-success' : status === 'Recusado' || status === 'Cancelado' ? 'badge-danger' : 'badge-warning';
+const closedQuote = quote => ['Aprovado','Recusado','Cancelado'].includes(quote.status);
+const asDate = value => typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+const isFollowUpDue = quote => !closedQuote(quote) && quote.nextFollowUpAt && asDate(quote.nextFollowUpAt).getTime() <= Date.now();
+const nextFollowUpInput = (days = 3) => { const date = new Date(Date.now() + days * 86400000); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0,16); };
 
 async function downloadPdf(quote) {
   const frame = document.createElement('iframe');
@@ -72,15 +76,20 @@ function followUpMessage(quote) {
 }
 
 function openFollowUp(quote) {
+  const step = Math.min(3, Number(quote.followUpStep || 0) + 1);
   const form = document.createElement('form');
   form.className = 'form-grid';
-  form.innerHTML = `<div class="field full"><label>Mensagem</label><textarea class="textarea" name="message" rows="8">${escapeHtml(followUpMessage(quote))}</textarea></div><div class="field"><label>Tipo de contato</label><select class="select" name="contactType"><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></div><div class="field"><label>Resultado</label><select class="select" name="result"><option>Aguardando resposta</option><option>Cliente pediu mais tempo</option><option>Cliente aprovou</option><option>Cliente recusou</option><option>Não respondeu</option></select></div><div class="field"><label>Próximo contato</label><input class="input" name="nextContactAt" type="datetime-local"></div><div class="field"><label>WhatsApp</label><input class="input" name="whatsapp" value="${escapeHtml(quote.whatsapp || '')}"></div><div class="field full"><label>Observação</label><textarea class="textarea" name="notes"></textarea></div><div class="field full actions"><button class="btn" type="button" id="copy-message">Copiar mensagem</button>${quote.whatsapp ? `<a class="btn btn-success" id="open-whatsapp" target="_blank" rel="noopener">${getIcon('whatsapp')} Abrir WhatsApp</a>` : ''}</div>`;
+  form.innerHTML = `<p class="follow-up-hint">Follow-up ${step} de 3. Após registrar, o próximo contato será agendado em 3 dias quando necessário.</p><div class="field full"><label>Mensagem sugerida</label><textarea class="textarea" name="message" rows="8">${escapeHtml(followUpMessage(quote))}</textarea></div><div class="field"><label>Tipo de contato</label><select class="select" name="contactType"><option>Mensagem enviada</option><option>WhatsApp</option><option>Ligação</option><option>E-mail</option></select></div><div class="field"><label>Resultado</label><select class="select" name="result"><option>Mensagem enviada</option><option>Cliente pediu mais tempo</option><option>Cliente aprovou</option><option>Cliente recusou</option><option>Não respondeu</option></select></div><div class="field"><label>Próximo contato</label><input class="input" name="nextContactAt" type="datetime-local" value="${nextFollowUpInput()}"></div><div class="field"><label>WhatsApp</label><input class="input" name="whatsapp" value="${escapeHtml(quote.whatsapp || '')}"></div><div class="field full"><label>Observação</label><textarea class="textarea" name="notes"></textarea></div><div class="field full actions"><button class="btn" type="button" id="copy-message">Copiar mensagem</button><a class="btn btn-success" id="open-whatsapp" target="_blank" rel="noopener">${getIcon('whatsapp')} Enviar pelo WhatsApp</a></div>`;
   applyInputMasks(form);
   const modal = createModal({title:`Follow-up ${quote.code}`,content:form,confirmText:'Registrar contato',onConfirm:async()=>{
     const data = formDataObject(form);
-    await saveRecord('quoteFollowUps',profile.companyId,{...data,quoteId:quote.id,quoteCode:quote.code,customerName:quote.customerName,userId:profile.uid,userName:profile.name,step:1});
+    await saveRecord('quoteFollowUps',profile.companyId,{...data,quoteId:quote.id,quoteCode:quote.code,customerName:quote.customerName,userId:profile.uid,userName:profile.name,step});
     const status = data.result === 'Cliente aprovou' ? 'Aprovado' : data.result === 'Cliente recusou' ? 'Recusado' : 'Aguardando resposta';
-    await saveRecord('quotes',profile.companyId,{status,whatsapp:data.whatsapp},quote.id);
+    const finalContact = ['Cliente aprovou','Cliente recusou'].includes(data.result) || step >= 3;
+    const nextAt = finalContact ? null : (data.nextContactAt || nextFollowUpInput());
+    await saveRecord('quotes',profile.companyId,{status,whatsapp:data.whatsapp,followUpStep:step,nextFollowUpAt:nextAt},quote.id);
+    const reminder = { type:'quote_follow_up',step,quoteId:quote.id,customerName:quote.customerName,whatsapp:data.whatsapp || '',scheduledAt:nextAt,status:finalContact ? 'completed' : 'pending',notes:data.notes || '' };
+    if (quote.reminderId) await saveRecord('reminders',profile.companyId,reminder,quote.reminderId); else if (!finalContact) await saveRecord('reminders',profile.companyId,reminder);
     await writeAudit({companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:'quote_follow_up',module:'quotes',recordId:quote.id,recordCode:quote.code,newValue:data});
     createToast('Follow-up registrado.'); await load(false); showList();
   }});
@@ -172,7 +181,7 @@ function showEditor(record = null) {
   editor.root.querySelector('#save-quote').addEventListener('click',async()=>{
     if(!editor.form.reportValidity())return;
     const data = values();
-    if(record) await saveRecord('quotes',profile.companyId,data,record.id); else await createQuoteWithReminder(data,profile.companyId);
+    if(record) await saveRecord('quotes',profile.companyId,data,record.id); else await createQuoteWithReminder(data,profile.companyId,companySettings.followUpDays || 4);
     createToast('Orçamento salvo com sucesso.'); await load(false); location.hash='#orcamentos'; showList();
   });
   editor.root.querySelector('#pdf-quote').addEventListener('click',()=>{if(editor.form.reportValidity())downloadPdf(values());});
@@ -190,7 +199,7 @@ function renderList() {
   quotePage = Math.min(quotePage, totalPages);
   const start = (quotePage - 1) * quotesPerPage;
   const pageQuotes = filtered.slice(start, start + quotesPerPage);
-  list.innerHTML = filtered.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº orçamento</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${pageQuotes.map(quote=>`<tr><td><strong>${escapeHtml(quote.code || '—')}</strong></td><td>${escapeHtml(quote.customerName || '—')}</td><td>${escapeHtml(quote.vehicle || '—')}<br><small>${escapeHtml(quote.plate || '')}</small></td><td><strong>${currency(quote.total)}</strong></td><td>${formatDate(quote.createdAt)}</td><td><span class="badge ${statusClass(quote.status)}">${escapeHtml(quote.status || 'Rascunho')}</span></td><td><div class="crud-actions" aria-label="Ações do orçamento"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${quote.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--pdf" data-action="pdf" data-id="${quote.id}">${getIcon('pdf',13)} PDF</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${quote.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${quote.id}">${getIcon('trash',13)} Excluir</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><div><strong>Nenhum orçamento encontrado</strong><p>Crie o primeiro orçamento para começar.</p></div></div>';
+  list.innerHTML = filtered.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº orçamento</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${pageQuotes.map(quote=>`<tr><td><strong>${escapeHtml(quote.code || '—')}</strong></td><td>${escapeHtml(quote.customerName || '—')}</td><td>${escapeHtml(quote.vehicle || '—')}<br><small>${escapeHtml(quote.plate || '')}</small></td><td><strong>${currency(quote.total)}</strong></td><td>${formatDate(quote.createdAt)}</td><td><span class="badge ${statusClass(quote.status)}">${escapeHtml(quote.status || 'Rascunho')}</span></td><td><div class="crud-actions" aria-label="Ações do orçamento">${isFollowUpDue(quote) ? `<button type="button" class="crud-action crud-action--reminder" data-action="reminder" data-id="${quote.id}">${getIcon('clock',13)} Lembrete</button>` : ''}<button type="button" class="crud-action crud-action--open" data-action="open" data-id="${quote.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--pdf" data-action="pdf" data-id="${quote.id}">${getIcon('pdf',13)} PDF</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${quote.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${quote.id}">${getIcon('trash',13)} Excluir</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><div><strong>Nenhum orçamento encontrado</strong><p>Crie o primeiro orçamento para começar.</p></div></div>';
   const pagination = page.querySelector('#quote-pagination');
   if (pagination) {
     const first = availableQuotes ? start + 1 : 0;
@@ -261,6 +270,7 @@ function showList() {
     const button=event.target.closest('[data-action]'); if(!button)return;
     const quote=quotes.find(item=>item.id===button.dataset.id); if(!quote)return;
     if(button.dataset.action==='open')openDetails(quote);
+    if(button.dataset.action==='reminder')openFollowUp(quote);
     if(button.dataset.action==='pdf')downloadPdf(quote);
     if(button.dataset.action==='edit')showEditor(quote);
     if(button.dataset.action==='delete')createConfirmDialog(`Enviar ${quote.code} para a lixeira?`,async()=>{await softDelete('quotes',quote.id,profile.uid);createToast('Orçamento enviado para a lixeira.');await load(false);});

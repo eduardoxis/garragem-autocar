@@ -98,11 +98,12 @@ export function setupNotifications(profile) {
     close();
     button.setAttribute('aria-expanded', 'true');
     panel = document.createElement('div');
-    panel.innerHTML = '<section class="notifications-panel notifications-panel--loading"><span>Carregando notificações...</span></section>';
+    panel.innerHTML = '<section class="notifications-panel notifications-panel--loading" id="notifications-panel"><span>Carregando notificações...</span></section>';
     document.body.append(panel.firstElementChild);
     panel = document.querySelector('#notifications-panel');
     notes = await collectNotifications(profile);
     setBadge(notes.length);
+    if (!panel) return;
     panel.outerHTML = renderPanel(notes, active);
     panel = document.querySelector('#notifications-panel');
     bindPanel();
