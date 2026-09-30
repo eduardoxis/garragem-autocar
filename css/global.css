@@ -111,8 +111,7 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .table-vehicle img,.table-vehicle-icon { width:34px; height:34px; flex:0 0 auto; object-fit:cover; border:1px solid var(--border); border-radius:8px; }
 .table-vehicle-icon { display:grid; place-items:center; color:var(--primary); background:#fff3e8; }
 .workshop-page .workshop-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
-@media (max-width:1050px) { .workshop-page .workshop-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:560px) { .workshop-page .workshop-stats { grid-template-columns:1fr; } }
+@media (max-width:560px) { .workshop-page .workshop-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 .password-field { position: relative; }
 .password-field .input { padding-right: 48px; }
 .password-field button { position: absolute; right: 5px; top: 5px; border: 0; background: transparent; }
