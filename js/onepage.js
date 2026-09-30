@@ -1,4 +1,3 @@
-import { openAdminPanel } from './modules/administracao/modal.js';
 import { installInputMasks } from './utils/masks.js';
 
 installInputMasks();
@@ -26,7 +25,8 @@ const routes = {
   auditoria: ['Auditoria', './modules/auditoria/page.js'],
   configuracoes: ['Configurações', './modules/configuracoes/page.js'],
   'check-in': ['Check-in', './modules/check-in/page.js'],
-  perfil: ['Perfil', './modules/perfil/page.js']
+  perfil: ['Perfil', './modules/perfil/page.js'],
+  administracao: ['Administração', './modules/administracao/page.js']
 };
 
 let navigationId = 0;
@@ -63,7 +63,6 @@ document.addEventListener('click', event => {
   const link = event.target.closest('a[href]');
   if (!link || link.target === '_blank' || link.hasAttribute('download') || link.dataset.action === 'logout') return;
   const href = link.getAttribute('href');
-  if (href === '#administracao') { event.preventDefault(); openAdminPanel(); return; }
   const route = href?.startsWith('#') && routes[href.slice(1).split('?')[0]] ? href : null;
   if (!route) return;
   event.preventDefault();

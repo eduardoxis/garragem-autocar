@@ -9,7 +9,7 @@ import { doc, serverTimestamp, setDoc } from 'https://www.gstatic.com/firebasejs
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
 
-const userCreationMessage = error => ({
+export const userCreationMessage = error => ({
   'auth/email-already-in-use':'Este e-mail já está cadastrado no Firebase.',
   'auth/invalid-email':'Informe um endereço de e-mail válido.',
   'auth/weak-password':'A senha precisa ter pelo menos 8 caracteres.',
@@ -17,7 +17,7 @@ const userCreationMessage = error => ({
   'permission-denied':'Seu usuário não possui permissão para cadastrar contas.'
 }[error?.code] || 'Não foi possível criar o usuário. Tente novamente.');
 
-async function createAuthorizedUser({ name, email, password, role, companyId }) {
+export async function createAuthorizedUser({ name, email, password, role, companyId }) {
   const secondaryApp = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
   let createdUser = null;
   let profileSaved = false;
