@@ -175,11 +175,29 @@ function showEditor(record = null) {
   editor.root.querySelector('#pdf-quote').addEventListener('click',()=>{if(editor.form.reportValidity())downloadPdf(values());});
 }
 
+let quotePage = 1;
+let quotesPerPage = 10;
+
 function renderList() {
   const list = page.querySelector('#quote-list');
   if (!list) return;
-  list.innerHTML = filtered.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº orçamento</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${filtered.map(quote=>`<tr><td><strong>${escapeHtml(quote.code || '—')}</strong></td><td>${escapeHtml(quote.customerName || '—')}</td><td>${escapeHtml(quote.vehicle || '—')}<br><small>${escapeHtml(quote.plate || '')}</small></td><td><strong>${currency(quote.total)}</strong></td><td>${formatDate(quote.createdAt)}</td><td><span class="badge ${statusClass(quote.status)}">${escapeHtml(quote.status || 'Rascunho')}</span></td><td><div class="crud-actions" aria-label="Ações do orçamento"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${quote.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--pdf" data-action="pdf" data-id="${quote.id}">${getIcon('pdf',13)} PDF</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${quote.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${quote.id}">${getIcon('trash',13)} Excluir</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><div><strong>Nenhum orçamento encontrado</strong><p>Crie o primeiro orçamento para começar.</p></div></div>';
-  page.querySelector('#quote-count').textContent = `${filtered.length} orçamento(s)`;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / quotesPerPage));
+  quotePage = Math.min(quotePage, totalPages);
+  const start = (quotePage - 1) * quotesPerPage;
+  const pageQuotes = filtered.slice(start, start + quotesPerPage);
+  list.innerHTML = filtered.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº orçamento</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${pageQuotes.map(quote=>`<tr><td><strong>${escapeHtml(quote.code || '—')}</strong></td><td>${escapeHtml(quote.customerName || '—')}</td><td>${escapeHtml(quote.vehicle || '—')}<br><small>${escapeHtml(quote.plate || '')}</small></td><td><strong>${currency(quote.total)}</strong></td><td>${formatDate(quote.createdAt)}</td><td><span class="badge ${statusClass(quote.status)}">${escapeHtml(quote.status || 'Rascunho')}</span></td><td><div class="crud-actions" aria-label="Ações do orçamento"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${quote.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--pdf" data-action="pdf" data-id="${quote.id}">${getIcon('pdf',13)} PDF</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${quote.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${quote.id}">${getIcon('trash',13)} Excluir</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><div><strong>Nenhum orçamento encontrado</strong><p>Crie o primeiro orçamento para começar.</p></div></div>';
+  const pagination = page.querySelector('#quote-pagination');
+  if (pagination) {
+    const first = filtered.length ? start + 1 : 0;
+    const last = Math.min(start + quotesPerPage, filtered.length);
+    const firstPage = Math.max(1, Math.min(quotePage - 2, totalPages - 4));
+    const lastPage = Math.min(totalPages, firstPage + 4);
+    const buttons = Array.from({length:lastPage - firstPage + 1}, (_, index) => {
+      const number = firstPage + index;
+      return `<button type="button" class="page-button${number === quotePage ? ' active' : ''}" data-quote-page="${number}" aria-label="Página ${number}" aria-current="${number === quotePage ? 'page' : 'false'}">${number}</button>`;
+    }).join('');
+    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${filtered.length} orçamento(s)</span><div class="pagination-actions"><button type="button" class="page-button page-previous" data-quote-page="${quotePage - 1}" ${quotePage === 1 ? 'disabled' : ''}>‹ Anterior</button>${buttons}<button type="button" class="page-button page-next" data-quote-page="${quotePage + 1}" ${quotePage === totalPages ? 'disabled' : ''}>Próxima ›</button><select id="quote-page-size" class="select page-size" aria-label="Orçamentos por página">${[10,25,50].map(size=>`<option value="${size}" ${size === quotesPerPage ? 'selected' : ''}>${size} por página</option>`).join('')}</select></div>`;
+  }
   const total=quotes.reduce((sum,item)=>sum+Number(item.total||0),0);
   const pending=quotes.filter(item=>!['Aprovado','Recusado','Cancelado'].includes(item.status)).length;
   const approved=quotes.filter(item=>item.status==='Aprovado').length;
@@ -187,7 +205,8 @@ function renderList() {
   if(metrics) metrics.innerHTML=[{icon:'file',label:'Total de orçamentos',value:quotes.length,tone:'orange'},{icon:'money',label:'Valor total',value:currency(total),tone:'green'},{icon:'clock',label:'Pendentes',value:pending,tone:'orange'},{icon:'check',label:'Aprovados',value:approved,tone:'green'}].map(item=>`<article class="card stat-card metric-card metric-card--${item.tone}"><span class="stat-icon">${getIcon(item.icon,24)}</span><div><small>${item.label}</small><strong>${item.value}</strong></div></article>`).join('');
 }
 
-function filter() {
+function filter(resetPage = false) {
+  if (resetPage) quotePage = 1;
   const term = page.querySelector('#search')?.value.toLocaleLowerCase('pt-BR').trim() || '';
   const status = page.querySelector('#status-filter')?.value || '';
   filtered = quotes.filter(quote=>(!status||quote.status===status)&&(!term||[quote.customerName,quote.plate,quote.code,quote.vehicle].some(value=>String(value||'').toLocaleLowerCase('pt-BR').includes(term))));
@@ -196,13 +215,13 @@ function filter() {
 
 async function load(append) {
   if (!profile) return;
-  const result = await listRecords('quotes',profile.companyId,{after:append?cursor:null,pageSize:20});
-  cursor=result.cursor; quotes=append?[...quotes,...result.records]:result.records; filter();
+  const result = await listRecords('quotes',profile.companyId,{after:append?cursor:null,pageSize:1000});
+  cursor=result.cursor; quotes=append?[...quotes,...result.records]:result.records; filter(!append);
 }
 
 function showList() {
   page.classList.add('module-page','module-orcamentos');
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="grid stats-grid module-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card module-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination"><button class="btn" id="load-more">${getIcon('refresh',17)} Carregar mais</button><span id="quote-count"></span></div></section>`;
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="grid stats-grid module-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card module-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination pagination-controls" id="quote-pagination"></div></section>`;
   const heading = page.querySelector('.page-heading');
   heading.classList.add('page-hero');
   const headingIcon = document.createElement('span');
@@ -210,9 +229,20 @@ function showList() {
   headingIcon.innerHTML = getIcon('file', 30);
   heading.prepend(headingIcon);
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
-  page.querySelector('#search').addEventListener('input',filter);
-  page.querySelector('#status-filter').addEventListener('change',filter);
-  page.querySelector('#load-more').addEventListener('click',()=>load(true));
+  page.querySelector('#search').addEventListener('input',()=>filter(true));
+  page.querySelector('#status-filter').addEventListener('change',()=>filter(true));
+  page.querySelector('#quote-pagination').addEventListener('click',event=>{
+    const button = event.target.closest('[data-quote-page]');
+    if (!button || button.disabled) return;
+    quotePage = Number(button.dataset.quotePage);
+    renderList();
+  });
+  page.querySelector('#quote-pagination').addEventListener('change',event=>{
+    if (event.target.id !== 'quote-page-size') return;
+    quotesPerPage = Number(event.target.value);
+    quotePage = 1;
+    renderList();
+  });
   page.querySelector('#quote-list').addEventListener('click',event=>{
     const button=event.target.closest('[data-action]'); if(!button)return;
     const quote=quotes.find(item=>item.id===button.dataset.id); if(!quote)return;
@@ -221,7 +251,7 @@ function showList() {
     if(button.dataset.action==='edit')showEditor(quote);
     if(button.dataset.action==='delete')createConfirmDialog(`Enviar ${quote.code} para a lixeira?`,async()=>{await softDelete('quotes',quote.id,profile.uid);createToast('Orçamento enviado para a lixeira.');await load(false);});
   });
-  if (!profile) { page.querySelector('#quote-list').innerHTML='<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os orçamentos reais aparecerão aqui.</p></div></div>'; page.querySelector('#load-more').disabled=true; }
+  if (!profile) { page.querySelector('#quote-list').innerHTML='<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os orçamentos reais aparecerão aqui.</p></div></div>'; }
   else filter();
 }
 
