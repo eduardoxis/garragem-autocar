@@ -3,12 +3,13 @@ import { mountShell } from '../../app.js';
 import { createModal, createConfirmDialog } from '../../components/modal.js';
 import { createToast } from '../../components/toast.js';
 import { getIcon } from '../../components/icons.js';
-import { createQuoteWithReminder, getCompanySettings, listRecords, saveRecord, softDelete, writeAudit } from '../../firebase/firestore.js';
+import { countRecords, createQuoteWithReminder, getCompanySettings, listRecords, saveRecord, softDelete, writeAudit } from '../../firebase/firestore.js';
 import { calculateItem, calculateQuote, currency } from '../../utils/currency.js';
 import { applyInputMasks, formDataObject, normalizeWhatsapp, parseCurrencyInput } from '../../utils/masks.js';
 import { formatDate, greeting } from '../../utils/date.js';
 import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@3.0.3/+esm';
 import html2canvas from 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm';
+import { where } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 const profile = await requireAuth();
 const companySettings = profile ? await getCompanySettings(profile.companyId) : {};
@@ -18,6 +19,8 @@ const statusOptions = ['Rascunho','Enviado','Aguardando resposta','Aprovado','Pa
 let quotes = [];
 let filtered = [];
 let cursor = null;
+let totalQuotes = 0;
+let hasMoreQuotes = false;
 
 const statusClass = status => status === 'Aprovado' ? 'badge-success' : status === 'Recusado' || status === 'Cancelado' ? 'badge-danger' : 'badge-warning';
 
@@ -181,22 +184,24 @@ let quotesPerPage = 10;
 function renderList() {
   const list = page.querySelector('#quote-list');
   if (!list) return;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / quotesPerPage));
+  const isFiltering = Boolean(page.querySelector('#search')?.value.trim() || page.querySelector('#status-filter')?.value);
+  const availableQuotes = isFiltering ? filtered.length : totalQuotes;
+  const totalPages = Math.max(1, Math.ceil(availableQuotes / quotesPerPage));
   quotePage = Math.min(quotePage, totalPages);
   const start = (quotePage - 1) * quotesPerPage;
   const pageQuotes = filtered.slice(start, start + quotesPerPage);
   list.innerHTML = filtered.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº orçamento</th><th>Cliente</th><th>Veículo</th><th>Valor</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>${pageQuotes.map(quote=>`<tr><td><strong>${escapeHtml(quote.code || '—')}</strong></td><td>${escapeHtml(quote.customerName || '—')}</td><td>${escapeHtml(quote.vehicle || '—')}<br><small>${escapeHtml(quote.plate || '')}</small></td><td><strong>${currency(quote.total)}</strong></td><td>${formatDate(quote.createdAt)}</td><td><span class="badge ${statusClass(quote.status)}">${escapeHtml(quote.status || 'Rascunho')}</span></td><td><div class="crud-actions" aria-label="Ações do orçamento"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${quote.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--pdf" data-action="pdf" data-id="${quote.id}">${getIcon('pdf',13)} PDF</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${quote.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${quote.id}">${getIcon('trash',13)} Excluir</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><div><strong>Nenhum orçamento encontrado</strong><p>Crie o primeiro orçamento para começar.</p></div></div>';
   const pagination = page.querySelector('#quote-pagination');
   if (pagination) {
-    const first = filtered.length ? start + 1 : 0;
-    const last = Math.min(start + quotesPerPage, filtered.length);
+    const first = availableQuotes ? start + 1 : 0;
+    const last = Math.min(start + quotesPerPage, availableQuotes);
     const firstPage = Math.max(1, Math.min(quotePage - 2, totalPages - 4));
     const lastPage = Math.min(totalPages, firstPage + 4);
     const buttons = Array.from({length:lastPage - firstPage + 1}, (_, index) => {
       const number = firstPage + index;
       return `<button type="button" class="page-button${number === quotePage ? ' active' : ''}" data-quote-page="${number}" aria-label="Página ${number}" aria-current="${number === quotePage ? 'page' : 'false'}">${number}</button>`;
     }).join('');
-    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${filtered.length} orçamento(s)</span><div class="pagination-actions"><button type="button" class="page-button page-previous" data-quote-page="${quotePage - 1}" ${quotePage === 1 ? 'disabled' : ''}>‹ Anterior</button>${buttons}<button type="button" class="page-button page-next" data-quote-page="${quotePage + 1}" ${quotePage === totalPages ? 'disabled' : ''}>Próxima ›</button><select id="quote-page-size" class="select page-size" aria-label="Orçamentos por página">${[10,25,50].map(size=>`<option value="${size}" ${size === quotesPerPage ? 'selected' : ''}>${size} por página</option>`).join('')}</select></div>`;
+    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${availableQuotes} orçamento(s)</span><div class="pagination-actions"><button type="button" class="page-button page-previous" data-quote-page="${quotePage - 1}" ${quotePage === 1 ? 'disabled' : ''}>‹ Anterior</button>${buttons}<button type="button" class="page-button page-next" data-quote-page="${quotePage + 1}" ${quotePage === totalPages ? 'disabled' : ''}>Próxima ›</button><select id="quote-page-size" class="select page-size" aria-label="Orçamentos por página">${[10,25,50].map(size=>`<option value="${size}" ${size === quotesPerPage ? 'selected' : ''}>${size} por página</option>`).join('')}</select></div>`;
   }
   const total=quotes.reduce((sum,item)=>sum+Number(item.total||0),0);
   const pending=quotes.filter(item=>!['Aprovado','Recusado','Cancelado'].includes(item.status)).length;
@@ -215,8 +220,11 @@ function filter(resetPage = false) {
 
 async function load(append) {
   if (!profile) return;
-  const result = await listRecords('quotes',profile.companyId,{after:append?cursor:null,pageSize:1000});
-  cursor=result.cursor; quotes=append?[...quotes,...result.records]:result.records; filter(!append);
+  const status = page.querySelector('#status-filter')?.value || '';
+  const result = await listRecords('quotes',profile.companyId,{after:append?cursor:null,pageSize:quotesPerPage,status});
+  cursor=result.cursor; hasMoreQuotes=result.hasMore; quotes=append?[...quotes,...result.records]:result.records;
+  if (!append) totalQuotes = await countRecords('quotes',profile.companyId,status ? [where('status','==',status)] : []);
+  filter(!append);
 }
 
 function showList() {
@@ -230,18 +238,22 @@ function showList() {
   heading.prepend(headingIcon);
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
   page.querySelector('#search').addEventListener('input',()=>filter(true));
-  page.querySelector('#status-filter').addEventListener('change',()=>filter(true));
-  page.querySelector('#quote-pagination').addEventListener('click',event=>{
+  page.querySelector('#status-filter').addEventListener('change',async()=>{ cursor=null; await load(false); });
+  page.querySelector('#quote-pagination').addEventListener('click',async event=>{
     const button = event.target.closest('[data-quote-page]');
     if (!button || button.disabled) return;
-    quotePage = Number(button.dataset.quotePage);
+    const nextPage = Number(button.dataset.quotePage);
+    while (quotes.length < nextPage * quotesPerPage && hasMoreQuotes) await load(true);
+    if (quotes.length < (nextPage - 1) * quotesPerPage) return;
+    quotePage = nextPage;
     renderList();
   });
-  page.querySelector('#quote-pagination').addEventListener('change',event=>{
+  page.querySelector('#quote-pagination').addEventListener('change',async event=>{
     if (event.target.id !== 'quote-page-size') return;
     quotesPerPage = Number(event.target.value);
     quotePage = 1;
-    renderList();
+    cursor = null;
+    await load(false);
   });
   page.querySelector('#quote-list').addEventListener('click',event=>{
     const button=event.target.closest('[data-action]'); if(!button)return;

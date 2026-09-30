@@ -1,6 +1,6 @@
 import {
   addDoc, collection, doc, getCountFromServer, getDoc, getDocs,
-  query, serverTimestamp, updateDoc, where, writeBatch
+  limit, orderBy, query, serverTimestamp, startAfter, updateDoc, where, writeBatch
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
 
@@ -12,26 +12,15 @@ export async function getProfile(uid) {
 export async function listRecords(collectionName, companyId, options = {}) {
   const clauses = [where('companyId', '==', companyId), where('deleted', '==', false)];
   if (options.status) clauses.push(where('status', '==', options.status));
-  const snap = await getDocs(query(collection(db, collectionName), ...clauses));
-  const field = options.orderBy || 'createdAt';
-  const direction = options.direction === 'asc' ? 1 : -1;
-  const valueForSort = value => {
-    if (value?.toMillis) return value.toMillis();
-    if (value instanceof Date) return value.getTime();
-    return value ?? '';
-  };
-  const allRecords = snap.docs
-    .map(item => ({ id: item.id, ...item.data() }))
-    .sort((a, b) => {
-      const aValue = valueForSort(a[field]);
-      const bValue = valueForSort(b[field]);
-      if (aValue === bValue) return a.id.localeCompare(b.id) * direction;
-      return (aValue > bValue ? 1 : -1) * direction;
-    });
   const pageSize = options.pageSize || 20;
-  const offset = Number(options.after?.offset) || 0;
-  const records = allRecords.slice(offset, offset + pageSize);
-  return { records, cursor: { offset: offset + records.length } };
+  const field = options.orderBy || 'createdAt';
+  const direction = options.direction === 'asc' ? 'asc' : 'desc';
+  clauses.push(orderBy(field, direction));
+  if (options.after) clauses.push(startAfter(options.after));
+  clauses.push(limit(pageSize));
+  const snap = await getDocs(query(collection(db, collectionName), ...clauses));
+  const records = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+  return { records, cursor: snap.docs.at(-1) || null, hasMore: snap.docs.length === pageSize };
 }
 
 export async function getCompanySettings(companyId) {

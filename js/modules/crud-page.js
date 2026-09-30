@@ -4,7 +4,7 @@ import { createModal, createConfirmDialog } from '../components/modal.js';
 import { createTable } from '../components/table.js';
 import { createToast } from '../components/toast.js';
 import { getIcon } from '../components/icons.js';
-import { listRecords, saveRecord, softDelete, writeAudit } from '../firebase/firestore.js';
+import { countRecords, listRecords, saveRecord, softDelete, writeAudit } from '../firebase/firestore.js';
 import { formatDate } from '../utils/date.js';
 import { imageFileToDataUrl } from '../utils/image.js';
 import { applyInputMasks, formDataObject } from '../utils/masks.js';
@@ -59,6 +59,8 @@ export async function createCrudPage(config) {
   let cursor = null;
   let currentPage = 1;
   let recordsPerPage = 10;
+  let totalRecords = 0;
+  let hasMore = false;
   const recordsElement = page.querySelector('#records');
   const metricsElement = page.querySelector('#page-summary');
 
@@ -85,21 +87,23 @@ export async function createCrudPage(config) {
         metricsElement.innerHTML = metricItems.map(item => `<article class="card stat-card metric-card metric-card--${item.tone || 'orange'}"><span class="stat-icon">${getIcon(item.icon || 'file',24)}</span><div><small>${item.label}</small><strong>${item.value}</strong>${item.note ? `<span>${item.note}</span>` : ''}</div></article>`).join('');
       }
     }
-    const totalPages = Math.max(1, Math.ceil(filtered.length / recordsPerPage));
+    const isFiltering = Boolean(page.querySelector('#search').value.trim() || page.querySelector('#status-filter')?.value);
+    const availableRecords = isFiltering ? filtered.length : totalRecords;
+    const totalPages = Math.max(1, Math.ceil(availableRecords / recordsPerPage));
     currentPage = Math.min(currentPage, totalPages);
     const start = (currentPage - 1) * recordsPerPage;
     const pageRecords = filtered.slice(start, start + recordsPerPage);
     recordsElement.innerHTML = createTable({ columns: config.columns, records: pageRecords, actions: actionButtons, emptyActionLabel:config.newLabel || `Cadastrar ${config.singular}` });
     const pagination = page.querySelector('#record-pagination');
-    const first = filtered.length ? start + 1 : 0;
-    const last = Math.min(start + recordsPerPage, filtered.length);
+    const first = availableRecords ? start + 1 : 0;
+    const last = Math.min(start + recordsPerPage, availableRecords);
     const firstPage = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
     const pageButtons = Array.from({length:Math.min(5,totalPages)},(_,index)=>{
       const pageNumber = firstPage + index;
       return `<button class="page-button ${pageNumber === currentPage ? 'active' : ''}" type="button" data-page="${pageNumber}">${pageNumber}</button>`;
     }).join('');
-    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${filtered.length} registro(s)</span><div class="pagination-actions"><button class="page-button page-previous" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>${pageButtons}<button class="page-button page-next" type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Próxima ›</button><select class="select page-size" id="record-page-size" aria-label="Registros por página"><option value="10" ${recordsPerPage === 10 ? 'selected' : ''}>10 por página</option><option value="25" ${recordsPerPage === 25 ? 'selected' : ''}>25 por página</option><option value="50" ${recordsPerPage === 50 ? 'selected' : ''}>50 por página</option></select></div>`;
-    page.querySelector('#list-total').textContent = `Total de ${records.length} registro(s)`;
+    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${availableRecords} registro(s)</span><div class="pagination-actions"><button class="page-button page-previous" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>${pageButtons}<button class="page-button page-next" type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Próxima ›</button><select class="select page-size" id="record-page-size" aria-label="Registros por página"><option value="10" ${recordsPerPage === 10 ? 'selected' : ''}>10 por página</option><option value="25" ${recordsPerPage === 25 ? 'selected' : ''}>25 por página</option><option value="50" ${recordsPerPage === 50 ? 'selected' : ''}>50 por página</option></select></div>`;
+    page.querySelector('#list-total').textContent = `Total de ${availableRecords} registro(s)`;
   };
   const applySearch = (resetPage = false) => {
     const term = page.querySelector('#search').value.trim().toLocaleLowerCase('pt-BR');
@@ -110,9 +114,11 @@ export async function createCrudPage(config) {
   };
   const load = async append => {
     recordsElement.innerHTML = '<div class="empty"><div class="skeleton" style="width:220px"></div></div>';
-    const result = await listRecords(config.collection, profile.companyId, { after: append ? cursor : null, pageSize: config.pageSize || 1000 });
+    const result = await listRecords(config.collection, profile.companyId, { after: append ? cursor : null, pageSize: recordsPerPage });
     cursor = result.cursor;
+    hasMore = result.hasMore;
     records = append ? [...records, ...result.records] : result.records;
+    if (!append) totalRecords = await countRecords(config.collection, profile.companyId);
     const statusFilter = page.querySelector('#status-filter');
     if (statusFilter) {
       const selected = statusFilter.value;
@@ -157,17 +163,21 @@ export async function createCrudPage(config) {
   page.querySelector('#status-filter')?.addEventListener('change', () => applySearch(true));
   page.querySelector('#filter-toggle')?.addEventListener('click', () => page.querySelector('#quick-filter-panel').classList.toggle('hidden'));
   page.querySelector('#clear-filter')?.addEventListener('click', () => { page.querySelector('#status-filter').value=''; page.querySelector('#search').value=''; applySearch(true); });
-  page.querySelector('#record-pagination').addEventListener('click', event => {
+  page.querySelector('#record-pagination').addEventListener('click', async event => {
     const button = event.target.closest('[data-page]');
     if (!button || button.disabled) return;
-    currentPage = Number(button.dataset.page);
+    const nextPage = Number(button.dataset.page);
+    while (records.length < nextPage * recordsPerPage && hasMore) await load(true);
+    if (records.length < (nextPage - 1) * recordsPerPage) return;
+    currentPage = nextPage;
     render();
   });
-  page.querySelector('#record-pagination').addEventListener('change', event => {
+  page.querySelector('#record-pagination').addEventListener('change', async event => {
     if (event.target.id !== 'record-page-size') return;
     recordsPerPage = Number(event.target.value);
     currentPage = 1;
-    render();
+    cursor = null;
+    await load(false);
   });
   recordsElement.addEventListener('click', event => {
     const button = event.target.closest('[data-action]');
