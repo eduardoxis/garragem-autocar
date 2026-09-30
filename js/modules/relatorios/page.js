@@ -2,10 +2,12 @@ import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
 import { listRecords } from '../../firebase/firestore.js';
 import { currency } from '../../utils/currency.js';
+import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm';
+import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@3.0.3/+esm';
 
 const profile = await requireAuth({role:'admin'});
 const page = mountShell(profile || {name:'Configuração pendente',role:'admin'}, {title:'Relatórios',active:'relatorios'});
-page.innerHTML = `<div class="setup-banner">Configure o Firebase para gerar relatórios reais.</div><section class="page-heading"><div><h1>Relatórios</h1><p>Analise faturamento, serviços e produtividade.</p></div></section><section class="toolbar"><select class="select" id="report-type" style="max-width:260px"><option value="quotes">Orçamentos</option><option value="serviceOrders">Ordens de serviço</option><option value="payments">Financeiro</option><option value="customers">Clientes</option><option value="vehicles">Veículos</option><option value="products">Estoque</option></select><input class="input" id="start-date" type="date" style="max-width:180px"><input class="input" id="end-date" type="date" style="max-width:180px"><button class="btn btn-primary" id="generate">Gerar relatório</button><button class="btn" id="csv">Exportar CSV</button></section><section class="card"><div class="card-body" id="report"><div class="empty"><div><strong>Selecione os filtros</strong><p>O resultado será exibido aqui.</p></div></div></div></section>`;
+page.innerHTML = `<div class="setup-banner">Configure o Firebase para gerar relatórios reais.</div><section class="page-heading"><div><h1>Relatórios</h1><p>Analise faturamento, serviços e produtividade.</p></div></section><section class="toolbar"><select class="select" id="report-type" style="max-width:260px"><option value="quotes">Orçamentos</option><option value="serviceOrders">Ordens de serviço</option><option value="payments">Financeiro</option><option value="customers">Clientes</option><option value="vehicles">Veículos</option><option value="products">Estoque</option></select><input class="input" id="start-date" type="date" style="max-width:180px"><input class="input" id="end-date" type="date" style="max-width:180px"><button class="btn btn-primary" id="generate">Gerar relatório</button><button class="btn" id="excel">Exportar Excel</button><button class="btn" id="pdf">Exportar PDF</button></section><section class="card"><div class="card-body" id="report"><div class="empty"><div><strong>Selecione os filtros</strong><p>O resultado será exibido aqui.</p></div></div></div></section>`;
 
 let data = [];
 const dateValue = item => {
@@ -29,13 +31,19 @@ const generate = async () => {
 };
 
 page.querySelector('#generate').addEventListener('click', () => generate().catch(error => console.error(error)));
-page.querySelector('#csv').addEventListener('click', () => {
+page.querySelector('#excel').addEventListener('click', () => {
   if (!data.length) return;
-  const keys = [...new Set(data.flatMap(Object.keys))].filter(key => !['createdAt','updatedAt'].includes(key));
-  const csv = [keys.join(';'), ...data.map(row => keys.map(key => `"${String(row[key] ?? '').replaceAll('"','""')}"`).join(';'))].join('\n');
-  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url; link.download = 'relatorio-garagem-auto-car.csv'; link.click();
-  URL.revokeObjectURL(url);
+  const rows = data.map(item => ({ Código_ou_nome:item.code || item.name || item.customerName || item.description || '', Data:dateValue(item), Status:item.status || '', Valor:Number(item.total || item.amount || item.salePrice || 0) }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), 'Relatório');
+  XLSX.writeFile(workbook, 'relatorio-garagem-auto-car.xlsx');
+});
+page.querySelector('#pdf').addEventListener('click', () => {
+  if (!data.length) return;
+  const pdf = new jsPDF();
+  pdf.setFontSize(18); pdf.text('Relatório — Garagem Auto Car', 14, 18);
+  pdf.setFontSize(10); pdf.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 14, 26);
+  let y = 38;
+  data.slice(0,45).forEach((item,index) => { if (y > 280) { pdf.addPage(); y = 18; } pdf.text(`${index + 1}. ${String(item.code || item.name || item.customerName || item.description || 'Registro')} — ${currency(item.total || item.amount || item.salePrice || 0)}`, 14, y); y += 6; });
+  pdf.save('relatorio-garagem-auto-car.pdf');
 });

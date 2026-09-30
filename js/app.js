@@ -6,6 +6,12 @@ import { createToast } from './components/toast.js';
 export function mountShell(profile, { title, active, notifications = 0 }) {
   const root = document.querySelector('#app');
   root.innerHTML = `${createSidebar(profile, active)}<main class="main">${createNavbar(title, notifications)}<div id="page-content" class="page"></div></main>${createMobileNav(profile, active)}`;
+  root.querySelector('#global-search-form')?.addEventListener('submit', event => {
+    event.preventDefault();
+    const term = root.querySelector('#global-search')?.value.trim();
+    if (term) location.hash = `#busca?q=${encodeURIComponent(term)}`;
+  });
+  root.querySelector('#notification-button')?.addEventListener('click', () => { location.hash = '#lembretes'; });
   root.onclick = async event => {
     const target = event.target.closest('[data-action="logout"]');
     if (!target) return;
