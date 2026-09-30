@@ -2,6 +2,7 @@ import { logout } from './firebase/authentication.js';
 import { createNavbar } from './components/navbar.js';
 import { createMobileNav, createSidebar } from './components/sidebar.js';
 import { createToast } from './components/toast.js';
+import { setupNotifications } from './components/notifications.js';
 
 export function mountShell(profile, { title, active, notifications = 0 }) {
   const root = document.querySelector('#app');
@@ -11,7 +12,7 @@ export function mountShell(profile, { title, active, notifications = 0 }) {
     const term = root.querySelector('#global-search')?.value.trim();
     if (term) location.hash = `#busca?q=${encodeURIComponent(term)}`;
   });
-  root.querySelector('#notification-button')?.addEventListener('click', () => { location.hash = '#lembretes'; });
+  setupNotifications(profile);
   root.onclick = async event => {
     const target = event.target.closest('[data-action="logout"]');
     if (!target) return;

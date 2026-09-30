@@ -147,6 +147,7 @@ export async function createCrudPage(config) {
       config.fields.filter(field => field.type === 'checkbox').forEach(field => { data[field.key] = form.elements[field.key].checked; });
       const normalized = config.normalize ? config.normalize(data, record) : data;
       const recordId = await saveRecord(config.collection, profile.companyId, normalized, record?.id);
+      if (config.afterSave) await config.afterSave({ data:normalized, record, recordId, profile, saveRecord });
       const auditValue = Object.fromEntries(Object.entries(normalized).filter(([key]) => !config.fields.some(field => field.type === 'image' && field.key === key)));
       await writeAudit({ companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:record?'update':'create',module:config.collection,recordId,recordCode:normalized[config.titleKey],oldValue:record,newValue:auditValue });
       createToast(`${config.singular} ${record ? 'atualizado' : 'cadastrado'} com sucesso.`);

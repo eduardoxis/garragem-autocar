@@ -43,9 +43,10 @@ service cloud.firestore {
 
     match /reminders/{id} {
       allow read: if active() && sameCompany();
-      allow create: if active() && incomingCompany()
+      allow create: if (active() && incomingCompany()
         && request.resource.data.type == 'quote_follow_up'
-        && request.resource.data.step == 1;
+        && request.resource.data.step == 1)
+        || (admin() && incomingCompany());
       allow update: if admin() && sameCompany() && incomingCompany();
       allow delete: if false;
     }
