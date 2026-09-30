@@ -111,6 +111,7 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .table-vehicle img,.table-vehicle-icon { width:34px; height:34px; flex:0 0 auto; object-fit:cover; border:1px solid var(--border); border-radius:8px; }
 .table-vehicle-icon { display:grid; place-items:center; color:var(--primary); background:#fff3e8; }
 .workshop-page #workshop-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:12px; }
+.finance-stats-row { display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:12px !important; }
 .password-field { position: relative; }
 .password-field .input { padding-right: 48px; }
 .password-field button { position: absolute; right: 5px; top: 5px; border: 0; background: transparent; }
