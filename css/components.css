@@ -142,12 +142,14 @@
 .workshop-box p,.workshop-box small { margin:3px 0 0; color:var(--muted); font-size:.7rem; }
 .workshop-task { min-height:66px; display:grid; grid-template-columns:38px 1fr auto; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--border); }
 .task-vehicle-icon { width:36px; height:36px; display:grid; place-items:center; color:#ff4d0b; background:#fff0e9; border-radius:50%; }
+.task-vehicle-photo { width:36px; height:36px; object-fit:cover; border:1px solid var(--border); border-radius:50%; }
+.workshop-box-photo { width:72px; height:58px; object-fit:cover; border-radius:10px; }
 .workshop-task div strong { font-size:.77rem; }
 .workshop-task div p { margin:3px 0 0; color:var(--muted); font-size:.7rem; }
 .workshop-task > small { grid-column:2; color:var(--muted); font-size:.66rem; }
 .workshop-task > .btn { grid-column:3; grid-row:1 / span 2; }
 
-@media (max-width:1200px) {
+@media (max-width:980px) {
   .dashboard-reference-grid { grid-template-columns:1fr; }
   .status-chart-layout { grid-template-columns:220px 1fr; }
   .workshop-layout { grid-template-columns:1fr; }
