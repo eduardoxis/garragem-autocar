@@ -229,7 +229,7 @@ async function load(append) {
 
 function showList() {
   page.classList.add('module-page','module-orcamentos');
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="grid stats-grid module-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card module-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination pagination-controls" id="quote-pagination"></div></section>`;
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="grid stats-grid module-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card module-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination pagination-controls" id="quote-pagination"></div></section>`;
   const heading = page.querySelector('.page-heading');
   heading.classList.add('page-hero');
   const headingIcon = document.createElement('span');
@@ -238,6 +238,8 @@ function showList() {
   heading.prepend(headingIcon);
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
   page.querySelector('#search').addEventListener('input',()=>filter(true));
+  page.querySelector('#search-submit').addEventListener('click',()=>filter(true));
+  page.querySelector('#search').addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); filter(true); } });
   page.querySelector('#status-filter').addEventListener('change',async()=>{ cursor=null; await load(false); });
   page.querySelector('#quote-pagination').addEventListener('click',async event=>{
     const button = event.target.closest('[data-quote-page]');

@@ -166,6 +166,7 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .metric-card--warning .stat-icon { color:#e88900; background:#fff3d7; }
 .module-toolbar { position:relative; align-items:center; gap:12px; padding:13px 16px; margin:0; border-radius:14px; }
 .module-toolbar .search .input { min-height:44px; }
+.search-submit { min-height:44px; white-space:nowrap; }
 .filter-toggle { min-width:116px; }
 .quick-filter-panel { position:absolute; z-index:20; top:calc(100% + 7px); right:15px; width:min(390px,calc(100vw - 30px)); display:grid; grid-template-columns:1fr auto; gap:10px; padding:14px; background:#fff; border:1px solid var(--border); border-radius:13px; box-shadow:0 18px 40px rgba(16,24,40,.14); }
 .quick-filter-panel .field { gap:4px; }
