@@ -4,7 +4,7 @@ const adminItems = [
   ['dashboard','Dashboard','#dashboard'], ['users','Clientes','#clientes'], ['car','Veículos','#veiculos'],
   ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
   ['calendar','Agenda','#agenda'], ['box','Estoque','#estoque'], ['truck','Fornecedores','#fornecedores'],
-  ['money','Financeiro','#financeiro']
+  ['money','Financeiro','#financeiro'], ['settings','Administração','#administracao']
 ];
 const userItems = [['users','Clientes','#clientes'],['file','Orçamentos','#orcamentos'],['settings','Perfil','#perfil']];
 const routeName = url => url.replace(/^#/,'').split('?')[0];
