@@ -64,7 +64,7 @@ export async function createCrudPage(config) {
   const recordsElement = page.querySelector('#records');
   const metricsElement = page.querySelector('#page-summary');
 
-  const actionButtons = record => `<div class="crud-actions" aria-label="Ações do registro"><button type="button" class="crud-action crud-action--open" data-action="open" data-id="${record.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${record.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${record.id}">${getIcon('trash',13)} Excluir</button></div>`;
+  const actionButtons = record => `<div class="crud-actions" aria-label="Ações do registro">${config.rowActions?.(record) || ''}<button type="button" class="crud-action crud-action--open" data-action="open" data-id="${record.id}">${getIcon('eye',13)} Abrir</button><button type="button" class="crud-action crud-action--edit" data-action="edit" data-id="${record.id}">${getIcon('edit',13)} Editar</button><button type="button" class="crud-action crud-action--delete" data-action="delete" data-id="${record.id}">${getIcon('trash',13)} Excluir</button></div>`;
   const render = () => {
     if (metricsElement) {
       const now = new Date();
@@ -135,6 +135,7 @@ export async function createCrudPage(config) {
       lookups[field.key] = options.map(option => ({ id:option.id, label:field.reference.label(option), record:option }));
     }));
     const form = formFor(config.fields, record, lookups);
+    config.afterForm?.({ form, record, profile });
     createModal({ title: record ? `Editar ${config.singular}` : config.newLabel || `Novo ${config.singular}`, content: form, confirmText: record ? 'Salvar alterações' : 'Cadastrar', onConfirm: async () => {
       if (!form.reportValidity()) return false;
       const data = formDataObject(form);
@@ -187,6 +188,7 @@ export async function createCrudPage(config) {
     if (!button) return;
     if (button.dataset.action === 'new') { openForm(null).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); }); return; }
     const record = records.find(item => item.id === button.dataset.id);
+    if (config.onAction?.({ action:button.dataset.action, record, profile, refresh:() => load(false) })) return;
     if (button.dataset.action === 'open') openDetails(record);
     if (button.dataset.action === 'edit') openForm(record).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); });
     if (button.dataset.action === 'delete') createConfirmDialog(`Enviar ${record[config.titleKey] || 'este registro'} para a lixeira?`, async () => { await softDelete(config.collection, record.id, profile.uid); await writeAudit({companyId:profile.companyId,userId:profile.uid,userName:profile.name,action:'soft_delete',module:config.collection,recordId:record.id,recordCode:record[config.titleKey],oldValue:record}); createToast('Registro enviado para a lixeira.'); await load(false); });

@@ -40,7 +40,7 @@ async function collectNotifications(profile) {
     recordsFor('serviceOrders', profile.companyId), recordsFor('financial', profile.companyId)
   ]);
   const notes = [];
-  reminders.filter(item => !isClosed(item.status)).forEach(item => {
+  reminders.filter(item => !isClosed(item.status) && priorityFor(item.scheduledAt) !== 'normal').forEach(item => {
     const category = item.type === 'quote_follow_up' ? 'orcamentos' : item.type === 'payment' ? 'financeiro' : 'oficina';
     const isQuote = category === 'orcamentos';
     notes.push({

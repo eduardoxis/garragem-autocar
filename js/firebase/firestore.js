@@ -44,11 +44,11 @@ export const softDelete = (collectionName, id, userId) => updateDoc(doc(db, coll
   deleted: true, deletedAt: serverTimestamp(), deletedBy: userId, updatedAt: serverTimestamp()
 });
 
-export async function createQuoteWithReminder(quote, companyId, followUpDays = 4) {
+export async function createQuoteWithReminder(quote, companyId, followUpDays = 1) {
   const quoteRef = doc(collection(db, 'quotes'));
   const reminderRef = doc(collection(db, 'reminders'));
   const nextFollowUpAt = new Date();
-  nextFollowUpAt.setDate(nextFollowUpAt.getDate() + Math.max(1, Number(followUpDays) || 4));
+  nextFollowUpAt.setDate(nextFollowUpAt.getDate() + Math.max(1, Number(followUpDays) || 1));
   nextFollowUpAt.setHours(9, 0, 0, 0);
   const batch = writeBatch(db);
   batch.set(quoteRef, { ...quote, companyId, followUpStep: 0, nextFollowUpAt, reminderId: reminderRef.id, deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
