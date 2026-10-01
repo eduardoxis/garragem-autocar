@@ -25,7 +25,13 @@ let hasMoreQuotes = false;
 const statusClass = status => status === 'Aprovado' ? 'badge-success' : status === 'Recusado' || status === 'Cancelado' ? 'badge-danger' : 'badge-warning';
 const closedQuote = quote => ['Aprovado','Recusado','Cancelado'].includes(quote.status);
 const asDate = value => typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
-const isFollowUpDue = quote => !closedQuote(quote) && quote.nextFollowUpAt && asDate(quote.nextFollowUpAt).getTime() <= Date.now();
+const followUpDueAt = quote => {
+  const scheduled = quote.nextFollowUpAt ? asDate(quote.nextFollowUpAt) : asDate(quote.createdAt);
+  if (Number.isNaN(scheduled.getTime())) return null;
+  if (!quote.nextFollowUpAt) scheduled.setDate(scheduled.getDate() + Math.max(1, Number(companySettings.followUpDays) || 1));
+  return scheduled;
+};
+const isFollowUpDue = quote => !closedQuote(quote) && followUpDueAt(quote)?.getTime() <= Date.now();
 const nextFollowUpInput = (days = 3) => { const date = new Date(Date.now() + days * 86400000); date.setMinutes(date.getMinutes() - date.getTimezoneOffset()); return date.toISOString().slice(0,16); };
 
 async function downloadPdf(quote) {
@@ -185,7 +191,7 @@ function showEditor(record = null) {
   editor.root.querySelector('#save-quote').addEventListener('click',async()=>{
     if(!editor.form.reportValidity())return;
     const data = values();
-    if(record) await saveRecord('quotes',profile.companyId,data,record.id); else await createQuoteWithReminder(data,profile.companyId,companySettings.followUpDays || 4);
+    if(record) await saveRecord('quotes',profile.companyId,data,record.id); else await createQuoteWithReminder(data,profile.companyId,companySettings.followUpDays || 1);
     createToast('Orçamento salvo com sucesso.'); await load(false); location.hash='#orcamentos'; showList();
   });
   editor.root.querySelector('#pdf-quote').addEventListener('click',()=>{if(editor.form.reportValidity())downloadPdf(values());});
