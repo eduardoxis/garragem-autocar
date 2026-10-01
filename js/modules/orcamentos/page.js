@@ -250,6 +250,22 @@ function showList() {
   headingIcon.innerHTML = getIcon('file', 30);
   heading.prepend(headingIcon);
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
+  const importInput = document.createElement('input');
+  importInput.type = 'file'; importInput.accept = 'application/json,.json'; importInput.hidden = true;
+  const importButton = document.createElement('button');
+  importButton.type = 'button'; importButton.className = 'btn'; importButton.innerHTML = `${getIcon('file',17)} Importar JSON`;
+  page.querySelector('#new-quote').before(importButton); page.querySelector('.page-heading').append(importInput);
+  importButton.addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files[0]; if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text()); const items = Array.isArray(parsed) ? parsed : parsed.records;
+      if (!Array.isArray(items) || !items.length) throw new Error('O JSON deve conter uma lista de orçamentos.');
+      for (const source of items) { const { id, companyId, createdAt, updatedAt, deleted, ...data } = source || {}; await saveRecord('quotes', profile.companyId, data); }
+      createToast(`${items.length} orçamento(s) importado(s).`); cursor = null; await load(false);
+    } catch (error) { console.error(error); createToast(error.message || 'Não foi possível importar o JSON.','error'); }
+    finally { importInput.value = ''; }
+  });
   page.querySelector('#search').addEventListener('input',()=>filter(true));
   page.querySelector('#search-submit').addEventListener('click',()=>filter(true));
   page.querySelector('#search').addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); filter(true); } });

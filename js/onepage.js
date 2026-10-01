@@ -27,7 +27,8 @@ const routes = {
   'check-in': ['Check-in', './modules/check-in/page.js'],
   perfil: ['Perfil', './modules/perfil/page.js'],
   administracao: ['Administração', './modules/administracao/page.js'],
-  busca: ['Busca global', './modules/busca/page.js']
+  busca: ['Busca global', './modules/busca/page.js'],
+  backup: ['Backup', './modules/backup/page.js']
 };
 
 let navigationId = 0;

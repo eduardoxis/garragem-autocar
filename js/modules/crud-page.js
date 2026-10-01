@@ -46,7 +46,7 @@ export async function createCrudPage(config) {
   const profile = await requireAuth({ roles:config.roles || (config.adminOnly ? ['admin'] : null) });
   const page = mountShell(profile || { name: 'Configuração pendente', email: '', role: 'admin' }, { title: config.title, active: config.active });
   page.classList.add('module-page', `module-${config.active}`);
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading page-hero"><span class="page-hero-icon"></span><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></section>${config.hideMetrics ? '' : '<section class="grid stats-grid module-metrics" id="page-summary"></section>'}<section class="toolbar module-toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button>${config.filterHtml || `<button class="btn filter-toggle" id="filter-toggle" type="button">${getIcon('filter',19)} Filtros</button>`}<div class="quick-filter-panel hidden" id="quick-filter-panel"><label class="field"><span>Status</span><select class="select" id="status-filter"><option value="">Todos</option></select></label><button class="btn" id="clear-filter" type="button">${getIcon('refresh',17)} Limpar filtros</button></div></section><section class="card module-list-card"><header class="module-list-header"><span class="module-list-icon">${getIcon(config.icon || 'file',22)}</span><div><h2>${config.listTitle || `Lista de ${config.title}`}</h2><p>${config.listSubtitle || `Visualize e gerencie os registros de ${config.title.toLocaleLowerCase('pt-BR')}.`}</p></div><span class="module-list-total" id="list-total"></span></header><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination pagination-controls" id="record-pagination"></div></section>`;
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading page-hero"><span class="page-hero-icon"></span><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><div class="page-heading-actions"><input id="import-json-file" type="file" accept="application/json,.json" hidden><button class="btn" id="import-json" type="button">${getIcon('file')} Importar JSON</button><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></div></section>${config.hideMetrics ? '' : '<section class="grid stats-grid module-metrics" id="page-summary"></section>'}<section class="toolbar module-toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button>${config.filterHtml || `<button class="btn filter-toggle" id="filter-toggle" type="button">${getIcon('filter',19)} Filtros</button>`}<div class="quick-filter-panel hidden" id="quick-filter-panel"><label class="field"><span>Status</span><select class="select" id="status-filter"><option value="">Todos</option></select></label><button class="btn" id="clear-filter" type="button">${getIcon('refresh',17)} Limpar filtros</button></div></section><section class="card module-list-card"><header class="module-list-header"><span class="module-list-icon">${getIcon(config.icon || 'file',22)}</span><div><h2>${config.listTitle || `Lista de ${config.title}`}</h2><p>${config.listSubtitle || `Visualize e gerencie os registros de ${config.title.toLocaleLowerCase('pt-BR')}.`}</p></div><span class="module-list-total" id="list-total"></span></header><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination pagination-controls" id="record-pagination"></div></section>`;
   const pageIcons = {clientes:'users',veiculos:'car',agenda:'calendar',estoque:'box',fornecedores:'truck',financeiro:'money','ordens-servico':'file','pos-venda':'clock',servicos:'wrench'};
   page.querySelector('.page-hero-icon').innerHTML = getIcon(config.icon || pageIcons[config.active] || 'file', 30);
   if (!profile) {
@@ -161,6 +161,30 @@ export async function createCrudPage(config) {
   };
 
   page.querySelector('#new-record').addEventListener('click', () => { openForm(null).catch(error => { console.error(error); createToast('Não foi possível abrir o formulário.','error'); }); });
+  const importInput = page.querySelector('#import-json-file');
+  page.querySelector('#import-json').addEventListener('click', () => importInput.click());
+  importInput.addEventListener('change', async () => {
+    const file = importInput.files[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const imported = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : null;
+      if (!imported?.length) throw new Error('O JSON deve conter uma lista de registros.');
+      let total = 0;
+      for (const source of imported) {
+        const { id, companyId, createdAt, updatedAt, deleted, deletedAt, deletedBy, ...data } = source || {};
+        if (!data || typeof data !== 'object') continue;
+        const normalized = config.normalize ? config.normalize(data, null) : data;
+        await saveRecord(config.collection, profile.companyId, normalized);
+        total += 1;
+      }
+      createToast(`${total} registro(s) importado(s) em ${config.title}.`);
+      await load(false);
+    } catch (error) {
+      console.error(error);
+      createToast(error.message || 'Não foi possível importar o JSON.','error');
+    } finally { importInput.value = ''; }
+  });
   page.querySelector('#search').addEventListener('input', () => applySearch(true));
   page.querySelector('#search-submit').addEventListener('click', () => applySearch(true));
   page.querySelector('#search').addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); applySearch(true); } });
