@@ -28,7 +28,7 @@ const isDue = record => {
 };
 
 createCrudPage({
-  title:'Central de lembretes', active:'administracao', collection:'reminders', singular:'lembrete', titleKey:'title', newLabel:'Novo lembrete', adminOnly:true, icon:'bell',
+  title:'Central de lembretes', active:'administracao', collection:'reminders', singular:'lembrete', titleKey:'title', newLabel:'Novo lembrete', adminOnly:true, adminBack:true, icon:'bell',
   subtitle:'Crie retornos de troca de óleo, revisões, pós-vendas, pagamentos e follow-ups.',
   searchKeys:['title','customerName','plate','vehicle','type','status'],
   columns:[{key:'title',label:'Lembrete'},{key:'customerName',label:'Cliente'},{key:'vehicle',label:'Veículo'},{key:'type',label:'Tipo'},{key:'scheduledAt',label:'Avisar em',render:formatDate},{key:'status',label:'Status'}],

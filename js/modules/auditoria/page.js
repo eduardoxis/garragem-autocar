@@ -2,7 +2,14 @@ import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
 import { listRecords } from '../../firebase/firestore.js';
 import { formatDate } from '../../utils/date.js';
+import { adminBackButton } from '../../components/admin-back.js';
 
-const profile=await requireAuth({role:'admin'});const page=mountShell(profile||{name:'Configuração pendente',role:'admin'},{title:'Auditoria',active:'administracao'});
-page.innerHTML=`<div class="setup-banner">Configure o Firebase para carregar os registros reais.</div><section class="page-heading"><div><h1>Auditoria</h1><p>Histórico somente para consulta das alterações importantes.</p></div></section><section class="toolbar"><label class="search"><input class="input" id="search" placeholder="Buscar usuário, ação, módulo ou registro..."></label></section><section class="card"><div id="logs"><div class="empty"><div class="skeleton" style="width:200px"></div></div></div></section>`;
-if(profile){const {records}=await listRecords('auditLogs',profile.companyId,{pageSize:100});const render=items=>{page.querySelector('#logs').innerHTML=items.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Usuário</th><th>Ação</th><th>Módulo</th><th>Registro</th><th>Data</th></tr></thead><tbody>${items.map(item=>`<tr><td>${item.userName||'—'}</td><td>${item.action||'—'}</td><td>${item.module||'—'}</td><td>${item.recordCode||'—'}</td><td>${formatDate(item.createdAt)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nenhum evento registrado.</div>';};render(records);page.querySelector('#search').addEventListener('input',event=>{const term=event.target.value.toLowerCase();render(records.filter(item=>[item.userName,item.action,item.module,item.recordCode].some(value=>String(value||'').toLowerCase().includes(term))));});}
+const profile = await requireAuth({ role:'admin' });
+const page = mountShell(profile || { name:'Configuração pendente', role:'admin' }, { title:'Auditoria', active:'administracao' });
+page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar os registros reais.</div><section class="page-heading"><div><h1>Auditoria</h1><p>Histórico somente para consulta das alterações importantes.</p></div>${adminBackButton()}</section><section class="toolbar"><label class="search"><input class="input" id="search" placeholder="Buscar usuário, ação, módulo ou registro..."></label></section><section class="card"><div id="logs"><div class="empty"><div class="skeleton" style="width:200px"></div></div></div></section>`;
+if (profile) {
+  const { records } = await listRecords('auditLogs',profile.companyId,{pageSize:100});
+  const render = items => { page.querySelector('#logs').innerHTML = items.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Usuário</th><th>Ação</th><th>Módulo</th><th>Registro</th><th>Data</th></tr></thead><tbody>${items.map(item=>`<tr><td>${item.userName||'—'}</td><td>${item.action||'—'}</td><td>${item.module||'—'}</td><td>${item.recordCode||'—'}</td><td>${formatDate(item.createdAt)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhum evento registrado.</div>'; };
+  render(records);
+  page.querySelector('#search').addEventListener('input',event=>{const term=event.target.value.toLowerCase();render(records.filter(item=>[item.userName,item.action,item.module,item.recordCode].some(value=>String(value||'').toLowerCase().includes(term))));});
+}

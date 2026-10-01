@@ -2,11 +2,13 @@ import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
 import { createToast } from '../../components/toast.js';
 import { listRecords, saveRecord } from '../../firebase/firestore.js';
+import { adminBackButton } from '../../components/admin-back.js';
 
 const collections = ['customers','vehicles','quotes','serviceOrders','products','suppliers','services','payments','reminders','appointments'];
 const profile = await requireAuth({ role:'admin' });
 const page = mountShell(profile || { name:'Configuração pendente', role:'admin' }, { title:'Backup', active:'administracao' });
 page.innerHTML = `<section class="page-heading"><div><h1>Backup e restauração</h1><p>Baixe uma cópia dos dados ou restaure um arquivo do sistema.</p></div></section><section class="card"><div class="card-body form-grid"><div class="field full"><strong>Backup completo</strong><p>Inclui clientes, veículos, orçamentos, OS, estoque, fornecedores, serviços, financeiro, lembretes e agenda.</p><button class="btn btn-primary" type="button" id="download-backup">Baixar backup</button></div><div class="field full"><label>Restaurar backup JSON</label><input class="input" type="file" id="restore-file" accept="application/json,.json"><small>A restauração adiciona os registros à empresa atual e não remove dados existentes.</small></div><div class="field full"><button class="btn" type="button" id="restore-backup">Restaurar arquivo</button></div></div></section>`;
+page.querySelector('.page-heading').insertAdjacentHTML('beforeend', adminBackButton());
 const clean = value => JSON.parse(JSON.stringify(value, (_, item) => typeof item?.toDate === 'function' ? item.toDate().toISOString() : item));
 const download = (name, text) => { const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); link.download=name; link.click(); URL.revokeObjectURL(link.href); };
 if (profile) {

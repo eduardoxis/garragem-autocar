@@ -4,6 +4,7 @@ import { createModal, createConfirmDialog } from '../components/modal.js';
 import { createTable } from '../components/table.js';
 import { createToast } from '../components/toast.js';
 import { getIcon } from '../components/icons.js';
+import { adminBackButton } from '../components/admin-back.js';
 import { countRecords, listRecords, saveRecord, softDelete, writeAudit } from '../firebase/firestore.js';
 import { formatDate } from '../utils/date.js';
 import { imageFileToDataUrl } from '../utils/image.js';
@@ -48,6 +49,7 @@ export async function createCrudPage(config) {
   page.classList.add('module-page', `module-${config.active}`);
   page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os dados reais.</div><section class="page-heading page-hero"><span class="page-hero-icon"></span><div><h1>${config.title}</h1><p>${config.subtitle}</p></div><div class="page-heading-actions"><input id="import-json-file" type="file" accept="application/json,.json" hidden><button class="btn" id="import-json" type="button">${getIcon('file')} Importar JSON</button><button class="btn btn-primary" id="new-record">${getIcon('plus')} ${config.newLabel || `Novo ${config.singular}`}</button></div></section>${config.hideMetrics ? '' : '<section class="grid stats-grid module-metrics" id="page-summary"></section>'}<section class="toolbar module-toolbar"><label class="search"><span class="sr-only">Pesquisar</span>${getIcon('search')}<input class="input" id="search" placeholder="${config.searchPlaceholder || 'Pesquisar...'}"></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button>${config.filterHtml || `<button class="btn filter-toggle" id="filter-toggle" type="button">${getIcon('filter',19)} Filtros</button>`}<div class="quick-filter-panel hidden" id="quick-filter-panel"><label class="field"><span>Status</span><select class="select" id="status-filter"><option value="">Todos</option></select></label><button class="btn" id="clear-filter" type="button">${getIcon('refresh',17)} Limpar filtros</button></div></section><section class="card module-list-card"><header class="module-list-header"><span class="module-list-icon">${getIcon(config.icon || 'file',22)}</span><div><h2>${config.listTitle || `Lista de ${config.title}`}</h2><p>${config.listSubtitle || `Visualize e gerencie os registros de ${config.title.toLocaleLowerCase('pt-BR')}.`}</p></div><span class="module-list-total" id="list-total"></span></header><div id="records"><div class="empty"><div class="skeleton" style="width:180px"></div></div></div><div class="pagination pagination-controls" id="record-pagination"></div></section>`;
   const pageIcons = {clientes:'users',veiculos:'car',agenda:'calendar',estoque:'box',fornecedores:'truck',financeiro:'money','ordens-servico':'file','pos-venda':'clock',servicos:'wrench'};
+  if (config.adminBack) page.querySelector('.page-heading-actions')?.insertAdjacentHTML('afterbegin', adminBackButton());
   page.querySelector('.page-hero-icon').innerHTML = getIcon(config.icon || pageIcons[config.active] || 'file', 30);
   if (!profile) {
     page.querySelector('#records').innerHTML = '<div class="empty"><div><strong>Firebase ainda não configurado</strong><p>Depois de informar as credenciais, os registros reais aparecerão aqui.</p></div></div>';
@@ -168,7 +170,13 @@ export async function createCrudPage(config) {
     if (!file) return;
     try {
       const parsed = JSON.parse(await file.text());
-      const imported = Array.isArray(parsed) ? parsed : Array.isArray(parsed.records) ? parsed.records : null;
+      const imported = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.records)
+          ? parsed.records
+          : Array.isArray(parsed.data?.[config.collection])
+            ? parsed.data[config.collection]
+            : null;
       if (!imported?.length) throw new Error('O JSON deve conter uma lista de registros.');
       let total = 0;
       for (const source of imported) {

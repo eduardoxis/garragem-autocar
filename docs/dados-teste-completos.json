@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-01T12:00:00.000Z",
+  "description": "Dados fictícios para testar a Garagem Auto Car. Importe em Administração > Backup > Restaurar arquivo.",
+  "data": {
+    "customers": [
+      { "name": "João da Silva", "document": "123.456.789-09", "phone": "(61) 99999-1001", "whatsapp": "61999991001", "email": "joao.silva@teste.com", "address": "Rua das Flores, 100", "status": "Ativo" },
+      { "name": "Maria Oliveira", "document": "987.654.321-00", "phone": "(61) 99999-1002", "whatsapp": "61999991002", "email": "maria.oliveira@teste.com", "address": "Avenida Central, 250", "status": "Ativo" },
+      { "name": "Carlos Pereira", "document": "111.222.333-44", "phone": "(61) 99999-1003", "whatsapp": "61999991003", "email": "carlos.pereira@teste.com", "address": "Quadra 12, Casa 8", "status": "Ativo" }
+    ],
+    "vehicles": [
+      { "plate": "ABC1D23", "brand": "Toyota", "model": "Corolla", "year": 2022, "color": "Prata", "mileage": 48500, "ownerName": "João da Silva", "status": "Ativo" },
+      { "plate": "DEF4G56", "brand": "Honda", "model": "Civic", "year": 2021, "color": "Preto", "mileage": 62300, "ownerName": "Maria Oliveira", "status": "Ativo" },
+      { "plate": "GHI7J89", "brand": "Fiat", "model": "Strada", "year": 2023, "color": "Branco", "mileage": 18500, "ownerName": "Carlos Pereira", "status": "Ativo" }
+    ],
+    "services": [
+      { "code": "SRV-001", "name": "Troca de óleo e filtro", "category": "Manutenção preventiva", "durationMinutes": 60, "price": 180, "warrantyDays": 90, "description": "Troca de óleo, filtro de óleo e verificação de níveis.", "active": true },
+      { "code": "SRV-002", "name": "Revisão completa", "category": "Revisão", "durationMinutes": 240, "price": 650, "warrantyDays": 90, "description": "Inspeção geral, filtros, fluidos e sistema de freios.", "active": true },
+      { "code": "SRV-003", "name": "Troca de pastilhas", "category": "Freios", "durationMinutes": 120, "price": 320, "warrantyDays": 90, "description": "Substituição de pastilhas de freio dianteiras.", "active": true }
+    ],
+    "products": [
+      { "name": "Óleo Motor 5W30", "sku": "OLEO-5W30", "brand": "Mobil", "category": "Óleos e fluidos", "quantity": 18, "minimumStock": 8, "costPrice": 32, "salePrice": 48, "location": "A1 - Prateleira 1" },
+      { "name": "Filtro de óleo", "sku": "FILT-001", "brand": "Mann", "category": "Filtros", "quantity": 4, "minimumStock": 8, "costPrice": 18, "salePrice": 35, "location": "A2 - Prateleira 2" },
+      { "name": "Pastilha de freio dianteira", "sku": "FREIO-001", "brand": "Bosch", "category": "Freios", "quantity": 0, "minimumStock": 4, "costPrice": 95, "salePrice": 160, "location": "B1 - Prateleira 1" }
+    ],
+    "suppliers": [
+      { "name": "Auto Peças Líder", "document": "12.345.678/0001-90", "phone": "(61) 3333-1000", "whatsapp": "6133331000", "email": "vendas@autopecaslider.com", "contactName": "Marcos Silva", "category": "Peças", "status": "Ativo", "paymentTerms": "30 dias" },
+      { "name": "Lubrificantes Brasil", "document": "98.765.432/0001-10", "phone": "(61) 3333-2000", "whatsapp": "6133332000", "email": "comercial@lubbrasil.com", "contactName": "Fernanda Costa", "category": "Óleos e fluidos", "status": "Ativo", "paymentTerms": "À vista ou 15 dias" }
+    ],
+    "quotes": [
+      { "code": "ORC-100001", "customerName": "João da Silva", "vehicle": "Toyota Corolla", "plate": "ABC1D23", "whatsapp": "61999991001", "status": "Aguardando resposta", "total": 265, "followUpStep": 0, "nextFollowUpAt": "2026-09-30T09:00", "items": [{ "type": "Peça", "description": "Óleo Motor 5W30", "quantity": 4, "unitPrice": 48, "discount": 0, "addition": 0 }, { "type": "Serviço", "description": "Troca de óleo e filtro", "quantity": 1, "unitPrice": 73, "discount": 0, "addition": 0 }] },
+      { "code": "ORC-100002", "customerName": "Maria Oliveira", "vehicle": "Honda Civic", "plate": "DEF4G56", "whatsapp": "61999991002", "status": "Aprovado", "total": 320, "items": [{ "type": "Serviço", "description": "Troca de pastilhas", "quantity": 1, "unitPrice": 320, "discount": 0, "addition": 0 }] }
+    ],
+    "serviceOrders": [
+      { "code": "OS-100001", "customerName": "João da Silva", "vehicle": "Toyota Corolla", "plate": "ABC1D23", "mileage": 48500, "entryDate": "2026-09-30T08:30", "forecastDate": "2026-10-01T17:00", "nextMaintenanceDate": "2027-03-30", "nextMaintenanceMileage": 58500, "mechanic": "Paulo Ferreira", "diagnosis": "Troca de óleo e filtro solicitada.", "status": "Em execução", "total": 265 },
+      { "code": "OS-100002", "customerName": "Maria Oliveira", "vehicle": "Honda Civic", "plate": "DEF4G56", "mileage": 62300, "entryDate": "2026-09-29T09:00", "forecastDate": "2026-09-30T18:00", "mechanic": "Rafael Costa", "diagnosis": "Pastilhas dianteiras com desgaste acentuado.", "status": "Aguardando aprovação", "total": 320 }
+    ],
+    "payments": [
+      { "description": "Pagamento OS-100001 - João da Silva", "type": "Receita", "category": "Serviços", "customerName": "João da Silva", "amount": 265, "dueDate": "2026-10-01", "paidAt": "", "status": "Pendente" },
+      { "description": "Compra de filtros", "type": "Conta a pagar", "category": "Peças e materiais", "customerName": "Auto Peças Líder", "amount": 420, "dueDate": "2026-09-29", "paidAt": "", "status": "Atrasado" }
+    ],
+    "reminders": [
+      { "title": "Troca de óleo - João da Silva", "customerName": "João da Silva", "vehicle": "Toyota Corolla", "plate": "ABC1D23", "type": "oil_change", "baseDate": "2026-04-01", "intervalMonths": 6, "scheduledAt": "2026-10-01T09:00", "whatsapp": "61999991001", "message": "Olá, João da Silva! Tudo bem? A Garagem Auto Car lembra que está próximo o período recomendado para a troca de óleo do veículo Toyota Corolla (ABC1D23). Podemos agendar seu atendimento?", "status": "pending", "notes": "Teste de lembrete de troca de óleo." },
+      { "title": "Pós-venda - Maria Oliveira", "customerName": "Maria Oliveira", "vehicle": "Honda Civic", "plate": "DEF4G56", "type": "post_sale", "baseDate": "2026-09-01", "intervalMonths": 1, "scheduledAt": "2026-10-01T09:00", "whatsapp": "61999991002", "message": "Olá, Maria Oliveira! Tudo bem? Gostaríamos de saber como está o seu veículo após o último atendimento da Garagem Auto Car. Precisa de alguma ajuda?", "status": "pending", "notes": "Teste de pós-venda." }
+    ],
+    "appointments": [
+      { "customerName": "Carlos Pereira", "vehicle": "Fiat Strada", "plate": "GHI7J89", "service": "Revisão completa", "scheduledAt": "2026-10-02T10:00", "status": "Agendado", "professional": "Paulo Ferreira", "notes": "Cliente aguardará na recepção." }
+    ]
+  }
+}
