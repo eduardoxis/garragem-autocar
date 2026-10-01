@@ -203,7 +203,7 @@ let quotesPerPage = 10;
 function renderList() {
   const list = page.querySelector('#quote-list');
   if (!list) return;
-  const isFiltering = Boolean(page.querySelector('#search')?.value.trim() || page.querySelector('#status-filter')?.value);
+  const isFiltering = Boolean(page.querySelector('#search')?.value.trim() || page.querySelector('#status-filter')?.value || page.querySelector('#date-start')?.value || page.querySelector('#date-end')?.value);
   const availableQuotes = isFiltering ? filtered.length : totalQuotes;
   const totalPages = Math.max(1, Math.ceil(availableQuotes / quotesPerPage));
   quotePage = Math.min(quotePage, totalPages);
@@ -233,7 +233,16 @@ function filter(resetPage = false) {
   if (resetPage) quotePage = 1;
   const term = page.querySelector('#search')?.value.toLocaleLowerCase('pt-BR').trim() || '';
   const status = page.querySelector('#status-filter')?.value || '';
-  filtered = quotes.filter(quote=>(!status||quote.status===status)&&(!term||[quote.customerName,quote.plate,quote.code,quote.vehicle].some(value=>String(value||'').toLocaleLowerCase('pt-BR').includes(term))));
+  const startDate = page.querySelector('#date-start')?.value || '';
+  const endDate = page.querySelector('#date-end')?.value || '';
+  filtered = quotes.filter(quote => {
+    const createdAt = asDate(quote.createdAt);
+    const quoteDate = Number.isNaN(createdAt.getTime()) ? '' : createdAt.toISOString().slice(0,10);
+    return (!status || quote.status === status)
+      && (!term || [quote.customerName,quote.plate,quote.code,quote.vehicle].some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(term)))
+      && (!startDate || quoteDate >= startDate)
+      && (!endDate || quoteDate <= endDate);
+  });
   renderList();
 }
 
@@ -248,20 +257,10 @@ async function load(append) {
 
 function showList() {
   page.classList.add('module-page','module-orcamentos');
-  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading"><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></section><section class="grid stats-grid module-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button><select id="status-filter" class="select" style="width:auto"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select></section><section class="card module-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination pagination-controls" id="quote-pagination"></div></section>`;
-  const heading = page.querySelector('.page-heading');
-  heading.classList.add('page-hero');
-  const headingIcon = document.createElement('span');
-  headingIcon.className = 'page-hero-icon';
-  headingIcon.innerHTML = getIcon('file', 30);
-  heading.prepend(headingIcon);
+  page.innerHTML = `<div class="setup-banner">Configure o Firebase para carregar e salvar os orçamentos reais.</div><section class="page-heading page-hero quote-page-hero"><span class="page-hero-icon">${getIcon('file',30)}</span><div><h1>Orçamentos</h1><p>Crie, acompanhe e envie orçamentos para seus clientes.</p></div><div class="page-heading-actions"><input id="import-quote-json-file" type="file" accept="application/json,.json" hidden><button id="import-quote-json" class="btn" type="button">${getIcon('file',17)} Importar JSON</button><button id="new-quote" class="btn btn-primary">${getIcon('plus')} Novo orçamento</button></div></section><section class="grid stats-grid module-metrics quote-metrics" id="quote-metrics"></section><section class="toolbar module-toolbar quote-toolbar"><label class="search">${getIcon('search')}<input id="search" class="input" placeholder="Pesquisar por cliente, veículo, número ou descrição..."></label><select id="status-filter" class="select"><option value="">Todos os status</option>${statusOptions.map(status=>`<option>${status}</option>`).join('')}</select><label class="date-filter">${getIcon('calendar',16)}<input id="date-start" class="input" type="date" aria-label="Data inicial"></label><label class="date-filter">${getIcon('calendar',16)}<input id="date-end" class="input" type="date" aria-label="Data final"></label><button class="btn btn-primary search-submit" id="search-submit" type="button">${getIcon('search',17)} Pesquisar</button><button class="btn" id="clear-quote-filter" type="button">${getIcon('x',16)} Limpar</button></section><section class="card module-list-card quote-list-card"><div id="quote-list"><div class="empty"><div class="skeleton" style="width:220px"></div></div></div><div class="pagination pagination-controls" id="quote-pagination"></div></section>`;
   page.querySelector('#new-quote').addEventListener('click',()=>showEditor());
-  const importInput = document.createElement('input');
-  importInput.type = 'file'; importInput.accept = 'application/json,.json'; importInput.hidden = true;
-  const importButton = document.createElement('button');
-  importButton.type = 'button'; importButton.className = 'btn'; importButton.innerHTML = `${getIcon('file',17)} Importar JSON`;
-  page.querySelector('#new-quote').before(importButton); page.querySelector('.page-heading').append(importInput);
-  importButton.addEventListener('click', () => importInput.click());
+  const importInput = page.querySelector('#import-quote-json-file');
+  page.querySelector('#import-quote-json').addEventListener('click', () => importInput.click());
   importInput.addEventListener('change', async () => {
     const file = importInput.files[0]; if (!file) return;
     try {
@@ -275,6 +274,9 @@ function showList() {
   page.querySelector('#search').addEventListener('input',()=>filter(true));
   page.querySelector('#search-submit').addEventListener('click',()=>filter(true));
   page.querySelector('#search').addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); filter(true); } });
+  page.querySelector('#date-start').addEventListener('change',()=>filter(true));
+  page.querySelector('#date-end').addEventListener('change',()=>filter(true));
+  page.querySelector('#clear-quote-filter').addEventListener('click',async()=>{ page.querySelector('#search').value=''; page.querySelector('#status-filter').value=''; page.querySelector('#date-start').value=''; page.querySelector('#date-end').value=''; cursor=null; await load(false); });
   page.querySelector('#status-filter').addEventListener('change',async()=>{ cursor=null; await load(false); });
   page.querySelector('#quote-pagination').addEventListener('click',async event=>{
     const button = event.target.closest('[data-quote-page]');

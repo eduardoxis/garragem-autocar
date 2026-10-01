@@ -145,6 +145,30 @@ html[data-setup-required="true"] .setup-banner { display: block; }
 .quote-items .item-price { width: 120px; }
 .quote-items tfoot td { color: #fff; background: #191b1f; border: 0; font-size: .82rem; font-weight: 800; text-align: right; text-transform: uppercase; }
 .quote-items tfoot #quote-total { color: #ff9b28; font-size: 1.05rem; white-space: nowrap; }
+.quote-page-hero { margin-bottom:16px; }
+.quote-page-hero .page-hero-icon { width:54px; height:54px; border-radius:12px; }
+.quote-page-hero .page-heading-actions .btn { min-height:42px; border-radius:10px; }
+.quote-page-hero .page-heading-actions .btn-primary { min-height:46px; }
+.quote-metrics { gap:10px; margin-bottom:14px; }
+.quote-metrics .stat-card { min-height:80px; gap:11px; padding:13px 15px; border-radius:12px; }
+.quote-metrics .stat-icon { width:40px; height:40px; border-radius:10px; }
+.quote-metrics .stat-card strong { margin-top:1px; font-size:22px; }
+.quote-metrics .stat-card small { font-size:10px; }
+.quote-toolbar { display:grid; grid-template-columns:minmax(260px,1.7fr) minmax(150px,.75fr) minmax(140px,.72fr) minmax(140px,.72fr) auto auto; gap:9px; align-items:center; padding:10px; margin-bottom:14px; border-radius:12px; }
+.quote-toolbar .search { min-width:0; }
+.quote-toolbar .input,.quote-toolbar .select { min-height:40px; border-radius:8px; }
+.quote-toolbar .btn { min-height:40px; padding:8px 13px; border-radius:8px; white-space:nowrap; }
+.date-filter { position:relative; display:block; }
+.date-filter svg { position:absolute; z-index:1; top:12px; left:11px; color:var(--muted); pointer-events:none; }
+.date-filter .input { padding-left:34px; }
+.quote-list-card { overflow:hidden; border-radius:12px; }
+.quote-list-card .table { min-width:920px; }
+.quote-list-card .table th { padding:10px 12px; font-size:10px; }
+.quote-list-card .table td { padding:9px 12px; font-size:12px; }
+.quote-list-card .crud-actions { flex-wrap:nowrap; gap:5px; }
+.quote-list-card .crud-action { min-height:32px; padding:5px 8px; white-space:nowrap; }
+@media (max-width:1250px) { .quote-toolbar { grid-template-columns:minmax(280px,1fr) repeat(2,minmax(140px,.5fr)) auto; }.quote-toolbar .date-filter { min-width:140px; } }
+@media (max-width:760px) { .quote-page-hero { align-items:flex-start; }.quote-page-hero .page-heading-actions { width:100%; }.quote-page-hero .page-heading-actions .btn { flex:1; }.quote-metrics { grid-template-columns:1fr 1fr; }.quote-toolbar { grid-template-columns:1fr 1fr; }.quote-toolbar .search { grid-column:1 / -1; }.quote-toolbar .btn { width:100%; } }
 .admin-panel-modal { width: min(1080px,100%); }
 .admin-panel-content { display: grid; gap: 18px; }
 .admin-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
