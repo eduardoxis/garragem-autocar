@@ -21,7 +21,7 @@
 .header-leading,.header-actions { display: flex; align-items: center; gap: 28px; }
 .header-search { width:min(770px,55vw); min-height:54px; display:flex; align-items:center; gap:14px; padding:0 20px; color:#64748b; background:#fff; border:1px solid #dce4ed; border-radius:15px; box-shadow:0 4px 14px rgba(16,24,40,.025); }
 .header-search input { width:100%; color:var(--text); background:transparent; border:0; outline:0; }
-.notification-button { position: relative; }
+.notification-button { position: relative; width: 56px; }
 .notification-count { position: absolute; right: -4px; top: -5px; min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; color: #fff; background: var(--danger); border: 2px solid #fff; border-radius: 999px; font-size: .65rem; font-weight: 800; }
 .notification-count.is-hidden { display:none; }
 .notifications-panel { position:fixed; z-index:300; top:82px; right:32px; width:min(410px,calc(100vw - 30px)); overflow:hidden; color:var(--text); background:#fff; border:1px solid var(--border); border-radius:16px; box-shadow:0 20px 45px rgba(15,23,42,.18); }
