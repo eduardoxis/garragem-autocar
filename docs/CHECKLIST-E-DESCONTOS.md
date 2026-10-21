@@ -77,3 +77,7 @@ npm run test:browser usa Playwright disponível no ambiente de desenvolvimento e
 Foram testados cálculos financeiros, persistência, regras de acesso, versões, divergência, assinatura presencial/remota, PNG vazio, mídia privada, expiração/revogação, prévia do PDF, mouse, toque emulado, limpeza/cancelamento, responsividade e conteúdo do documento. O novo texto e o total de R$ 392,85 foram conferidos no documento. PDFs de revisão foram renderizados e inspecionados visualmente.
 
 Testes usam dados fictícios e serviços isolados. Não houve teste com câmera física, envio real de WhatsApp ou credenciais de produção. O teste de navegador intercepta bibliotecas externas de PDF; a geração final por jsPDF/html2canvas e os uploads na implantação precisam de validação em homologação.
+
+## Baixar e enviar o PDF
+
+Abra um checklist finalizado e use **Baixar PDF** ou **Enviar PDF ao cliente**. A assinatura registrada e as fotos são incluídas no arquivo. No celular, prepare o PDF e toque em **Compartilhar arquivo PDF** para escolher o aplicativo disponível. No computador, baixe o arquivo, abra a conversa pelo botão **Abrir WhatsApp do cliente** e anexe o PDF usando o clipe. Não há envio automático nem registro automático de ciência ou envio.

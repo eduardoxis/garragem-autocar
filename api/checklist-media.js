@@ -10,7 +10,7 @@ export default async function handler(req,res){secureResponse(res);if(req.method
 try{const {action,id,token,mediaId,base64,kind,version}=req.body||{};const c=await context(req,id,token);
 if(action==='read'){
 if(!validId(mediaId))throw new Error('Arquivo inválido');const m=(await adminDb.doc('checklistMedia/'+mediaId).get()).data();if(!m||m.checklistId!==c.ref.id)throw new Error('Arquivo indisponível');
-let r=c.record;if(version&&!c.public){if(!/^\d+$/.test(String(version)))throw new Error('Versão inválida');r=(await c.ref.collection('versions').doc(String(version)).get()).data();if(!r)throw new Error('Versão indisponível');}
+let r=c.record;if(version&&!c.public){if(!/^\d+$/.test(String(version)))throw new Error('Versão inválida');if(Number(version)!==Number(c.record.version)){r=(await c.ref.collection('versions').doc(String(version)).get()).data();if(!r)throw new Error('Versão indisponível');}}
 if(!r.data.media.some(f=>f.id===mediaId)&&r.confirmation?.signatureId!==mediaId)throw new Error('Arquivo não pertence a esta versão');
 if(m.encoding!=='base64')throw new Error('Arquivo antigo indisponível neste formato. Reanexe o arquivo em Base64.');const chunks=await adminDb.doc('checklistMedia/'+mediaId).collection('chunks').orderBy('index').get();if(chunks.size!==m.chunkCount)throw new Error('Arquivo incompleto.');const buffer=Buffer.from(chunks.docs.map(d=>d.data().data).join(''),'base64');if(buffer.length!==m.size||createHash('sha256').update(buffer).digest('hex')!==m.sha256)throw new Error('Arquivo com falha de integridade.');res.setHeader('Content-Type',m.contentType);res.setHeader('Content-Length',buffer.length);return res.status(200).send(buffer);
 }
