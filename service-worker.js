@@ -1,4 +1,4 @@
-const CACHE='garagem-auto-car-shell-v5';
+const CACHE='garagem-auto-car-shell-v6';
 const SHELL=['/login.html','/index.html','/404.html','/js/onepage.js','/css/variables.css','/css/global.css','/css/components.css','/css/responsive.css'];
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())
@@ -12,6 +12,7 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
 
   const requestUrl=new URL(event.request.url);
+  if(requestUrl.pathname.startsWith('/api/')||requestUrl.pathname.startsWith('/checklist'))return;
   if(requestUrl.origin!==self.location.origin)return;
 
   event.respondWith(

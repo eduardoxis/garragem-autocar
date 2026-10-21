@@ -1,0 +1,2 @@
+import fs from 'node:fs';import {spawnSync} from 'node:child_process';
+let count=0,failed=false;function walk(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const path=dir+'/'+entry.name;if(entry.isDirectory())walk(path);else if(/\.m?js$/.test(path)){count++;const result=spawnSync(process.execPath,['--check',path],{encoding:'utf8'});if(result.status){failed=true;console.error(path,result.stderr);}}}}for(const dir of ['js','api','tests'])walk(dir);console.log(count+' arquivos JavaScript verificados.');if(failed)process.exitCode=1;

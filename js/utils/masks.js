@@ -38,6 +38,7 @@ export const maskCurrencyInput = value => {
 const currencyFields = new Set(['amount','total','unitprice','costprice','saleprice','price','discount','addition']);
 
 export function inputMaskFor(input) {
+  if(input?.dataset?.noMask==='true')return ''; 
   if (!input?.name && !input?.dataset?.mask && !input?.dataset?.key) return '';
   if (input.dataset.mask) return input.dataset.mask;
   const name = String(input.name || input.dataset.key || '').toLocaleLowerCase('pt-BR');

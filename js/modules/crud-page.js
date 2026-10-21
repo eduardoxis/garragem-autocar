@@ -158,7 +158,8 @@ export async function createCrudPage(config) {
     }});
   };
   const openDetails = record => {
-    const content = `<div class="form-grid">${config.fields.filter(field => !field.hiddenInDetails).map(field => `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><div>${escapeHtml(record[field.key] || '—')}</div></div>`).join('')}<div class="field"><label>Cadastrado em</label><div>${formatDate(record.createdAt)}</div></div></div>`;
+    const checklistLink = ['serviceOrders','vehicles','checkIns'].includes(config.collection) ? '<a class="btn" href="#checklist?plate='+encodeURIComponent(record.plate||'')+'">Consultar checklist do veículo</a>' : '';
+    const content = checklistLink + `<div class="form-grid">${config.fields.filter(field => !field.hiddenInDetails).map(field => `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><div>${escapeHtml(record[field.key] || '—')}</div></div>`).join('')}<div class="field"><label>Cadastrado em</label><div>${formatDate(record.createdAt)}</div></div></div>`;
     createModal({ title: record[config.titleKey] || config.singular, content, confirmText: 'Fechar', cancelText: 'Editar', onConfirm: () => true });
   };
 

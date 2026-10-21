@@ -1,6 +1,7 @@
+import { api } from '../services/api.js';
 import {
   addDoc, collection, doc, getCountFromServer, getDoc, getDocs,
-  limit, orderBy, query, serverTimestamp, startAfter, updateDoc, where, writeBatch
+  limit, orderBy, query, serverTimestamp, startAfter, updateDoc, where
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 import { db } from './firebase-config.js';
 
@@ -29,6 +30,7 @@ export async function getCompanySettings(companyId) {
 }
 
 export async function saveRecord(collectionName, companyId, data, id = null) {
+  if(collectionName==='quotes'){const result=await api('quotes',{id,data,action:id&&!data.items?'followup':undefined});return result.id;}
   const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
   if (id) {
     await updateDoc(doc(db, collectionName, id), { ...clean, companyId, updatedAt: serverTimestamp() });
@@ -45,21 +47,7 @@ export const softDelete = (collectionName, id, userId) => updateDoc(doc(db, coll
 });
 
 export async function createQuoteWithReminder(quote, companyId, followUpDays = 1) {
-  const quoteRef = doc(collection(db, 'quotes'));
-  const reminderRef = doc(collection(db, 'reminders'));
-  const nextFollowUpAt = new Date();
-  nextFollowUpAt.setDate(nextFollowUpAt.getDate() + Math.max(1, Number(followUpDays) || 1));
-  nextFollowUpAt.setHours(9, 0, 0, 0);
-  const batch = writeBatch(db);
-  batch.set(quoteRef, { ...quote, companyId, followUpStep: 0, nextFollowUpAt, reminderId: reminderRef.id, deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-  batch.set(reminderRef, {
-    companyId, type: 'quote_follow_up', step: 1, quoteId: quoteRef.id,
-    customerId: quote.customerId || null, customerName: quote.customerName,
-    whatsapp: quote.whatsapp || '', scheduledAt: nextFollowUpAt, status: 'pending',
-    deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-  });
-  await batch.commit();
-  return quoteRef.id;
+  return (await api('quotes',{data:quote})).id;
 }
 
 export async function countRecords(collectionName, companyId, extra = []) {

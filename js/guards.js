@@ -4,8 +4,8 @@ import { getProfile } from './firebase/firestore.js';
 
 const allowedPagesByRole = {
   user: new Set(['clientes', 'orcamentos', 'perfil']),
-  atendente: new Set(['clientes', 'veiculos', 'orcamentos', 'agenda', 'perfil']),
-  mecanico: new Set(['oficina', 'ordens-servico', 'perfil']),
+  atendente: new Set(['checklist', 'clientes', 'veiculos', 'orcamentos', 'agenda', 'perfil']),
+  mecanico: new Set(['checklist', 'oficina', 'ordens-servico', 'perfil']),
   financeiro: new Set(['financeiro', 'perfil'])
 };
 

@@ -3,15 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
-    function active() { return signedIn() && profile().data.active == true; }
+    function active() { return signedIn() && profile().data.active == true && profile().data.get('deleted', false) == false; }
     function company() { return profile().data.companyId; }
     function admin() { return active() && profile().data.role == 'admin'; }
     function sameCompany() { return resource.data.companyId == company(); }
     function incomingCompany() { return request.resource.data.companyId == company(); }
 
     match /users/{uid} {
-      allow read: if active() && (uid == request.auth.uid || admin());
-      allow create, update: if admin();
+      allow read: if active() && (uid == request.auth.uid || (admin() && resource.data.companyId == company()));
+      allow create: if admin() && request.resource.data.companyId == company();
+      allow update: if admin() && resource.data.companyId == company() && request.resource.data.companyId == company();
       allow delete: if false;
     }
 
@@ -29,9 +30,7 @@ service cloud.firestore {
 
     match /quotes/{id} {
       allow read: if active() && sameCompany();
-      allow create: if active() && incomingCompany();
-      allow update: if active() && sameCompany() && incomingCompany();
-      allow delete: if false;
+      allow write: if false;
     }
 
     match /quoteFollowUps/{id} {
@@ -57,10 +56,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    match /{collection}/{id} {
-      allow read: if admin() && sameCompany();
-      allow create: if admin() && incomingCompany();
+    match /checklists/{id} { allow read, write: if false; }
+    match /checklistLinks/{id} { allow read, write: if false; }
+    match /checklistMedia/{id} { allow read, write: if false; }
+    match /vehicles/{id} {
+      allow read: if active() && sameCompany() && profile().data.role in ['admin','atendente','mecanico'];
+      allow create: if active() && incomingCompany() && profile().data.role in ['admin','atendente','mecanico'];
       allow update: if admin() && sameCompany() && incomingCompany();
+    }
+    match /serviceOrders/{id} { allow read: if active() && sameCompany() && profile().data.role in ['admin','atendente','mecanico']; }
+    match /{collection}/{id} {
+      allow read: if !(collection in ['checklists','checklistLinks','checklistMedia']) && admin() && sameCompany();
+      allow create: if !(collection in ['quotes','checklists','checklistLinks','checklistMedia']) && admin() && incomingCompany();
+      allow update: if !(collection in ['quotes','checklists','checklistLinks','checklistMedia']) && admin() && sameCompany() && incomingCompany();
       allow delete: if false;
     }
   }

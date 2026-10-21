@@ -23,7 +23,8 @@ export function validJsonRequest(req, maxBytes = 32768) {
 
 export function rateLimit(req, { limit = 30, windowMs = 60000 } = {}) {
   const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  const key = forwarded || req.socket?.remoteAddress || 'unknown';
+  const route=String(req.url||'/unknown').split('?')[0];
+  const key=route+':'+(forwarded || req.socket?.remoteAddress || 'unknown');
   const now = Date.now();
   const current = attempts.get(key);
   if (!current || now - current.startedAt >= windowMs) {

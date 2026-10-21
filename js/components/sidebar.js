@@ -2,7 +2,7 @@ import { getIcon } from './icons.js';
 
 const adminItems = [
   ['dashboard','Dashboard','#dashboard'], ['users','Clientes','#clientes'], ['car','Veículos','#veiculos'],
-  ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
+  ['check','Checklist','#checklist'], ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
   ['calendar','Agenda','#agenda'], ['box','Estoque','#estoque'], ['truck','Fornecedores','#fornecedores'],
   ['money','Financeiro','#financeiro'], ['settings','Administração','#administracao']
 ];
@@ -10,7 +10,7 @@ const userItems = [['users','Clientes','#clientes'],['file','Orçamentos','#orca
 const routeName = url => url.replace(/^#/,'').split('?')[0];
 
 export function createSidebar(profile, active) {
-  const items = profile.role === 'admin' ? adminItems : userItems;
+  const items = profile.role === 'admin' ? adminItems : ['atendente','mecanico'].includes(profile.role) ? [...userItems,['check','Checklist','#checklist']] : userItems;
   return `<aside class="sidebar">
     <a class="sidebar-brand" href="${profile.role === 'admin' ? '#dashboard' : '#clientes'}"><img class="brand-logo" src="assets/garagem-auto-car-logo.png" alt="Garagem Auto Car"><span><strong>GARAGEM AUTO CAR</strong><small>GESTÃO DE OFICINA</small></span></a>
     <nav class="sidebar-nav" aria-label="Menu principal">${items.map(([icon,label,url]) => `<a class="nav-link ${active === routeName(url) ? 'active' : ''}" href="${url}">${getIcon(icon)}<span>${label}</span></a>`).join('')}</nav>

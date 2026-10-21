@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vercel dev",
     "test": "node tests/run.js",
-    "check": "node --check js/app.js && node --check js/guards.js && node --check js/modules/crud-page.js && node --check js/modules/orcamentos/page.js"
+    "check": "node tests/check-syntax.js",
+    "test:browser": "node tests/browser.test.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.5.0",

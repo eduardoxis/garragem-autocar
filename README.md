@@ -12,3 +12,7 @@ Sistema de gestão para oficina mecânica construído com HTML5, CSS puro, JavaS
 6. Execute `npm install` e `npm run dev`.
 
 Nenhum arquivo ou imagem é gravado no Firestore. URLs externas são opcionais.
+
+## Checklist e descontos
+
+Consulte [o guia de configuração e operação](docs/CHECKLIST-E-DESCONTOS.md) e [o relatório da entrega](RELATORIO-DA-ENTREGA.md). As APIs, o bucket privado e as regras precisam ser configurados/publicados para os novos fluxos funcionarem na nuvem.
