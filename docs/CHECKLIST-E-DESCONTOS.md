@@ -10,8 +10,8 @@ Use Node.js 24 para os testes desta entrega. O projeto mantém JavaScript nativo
 
 1. Instale as dependências já declaradas em package.json com npm install.
 2. Configure as variáveis de .env.example em .env.local para desenvolvimento e no projeto Vercel para publicação. Não grave chaves reais no Git.
-3. Provisione um bucket privado do Cloud Storage e informe FIREBASE_STORAGE_BUCKET. Ative Public Access Prevention como enforced. O código verifica essa configuração antes de aceitar arquivos. Garanta à conta de serviço acesso aos objetos e à leitura dos metadados do bucket. Não conceda acesso público ao bucket.
-4. Publique as regras e o índice do Firestore e as regras de Storage no projeto Firebase correto. O comando, a partir da raiz do projeto, é: firebase deploy --project SEU_PROJECT_ID --only firestore:rules,firestore:indexes,storage. Substitua SEU_PROJECT_ID pelo identificador real. O comando depende da Firebase CLI autenticada e da configuração do bucket.
+3. Não é necessário configurar Firebase Storage. Fotos são otimizadas no navegador; fotos, vídeos e assinaturas são persistidos em Base64 em documentos privados do Firestore, acessíveis somente pela API.
+4. Publique as regras e o índice do Firestore no projeto correto: firebase deploy --project SEU_PROJECT_ID --only firestore:rules,firestore:indexes. O comando depende da Firebase CLI autenticada.
 5. Publique a versão da aplicação que inclui as novas APIs. As novas regras bloqueiam gravações diretas em quotes: coordene a atualização das regras e da aplicação. Fazer push no Git não publica automaticamente as regras do Firebase.
 6. Execute npm run dev para servir a aplicação e suas APIs. Abrir index.html diretamente ou usar apenas um servidor estático não executa as funções /api.
 7. Faça uma validação em ambiente de homologação antes de usar dados reais: autenticação, gravação, upload, consulta remota, assinatura e download do PDF.
@@ -46,7 +46,7 @@ O painel pesquisa por cliente, placa e número e filtra data, responsável e sta
 
 ## Mídias e assinatura
 
-Arquivos são binários privados no Cloud Storage. O Firestore guarda referências e metadados; vídeos e fotos não são armazenados em campos Base64. Base64 é usado apenas no transporte de uploads pequenos à função, com limite de tamanho.
+Arquivos são armazenados em Base64, divididos em partes de até 500.000 caracteres em checklistMedia/{id}/chunks. A API valida acesso, vínculo com a versão, tamanho e integridade SHA-256 na leitura. Fotos de até 5 MB são otimizadas para JPEG; vídeos e assinaturas aceitam até 2,5 MB. Assinaturas permanecem PNG e mantêm a validação dos traços. Não é usado Firebase Storage.
 
 São permitidos JPG, PNG, WebP, MP4 e WebM, até 2,5 MB por arquivo e 60 arquivos por checklist. O limite respeita a infraestrutura atual de funções JSON. Para vídeos maiores, será necessário acrescentar upload direto/resumível autenticado; este fluxo não foi simulado. Há seleção múltipla, acesso à câmera/gravador compatível do dispositivo, progresso de envio, legendas, vínculo à parte inspecionada, ampliação e remoção durante o rascunho. Fotografias HEIC precisam ser convertidas para um formato permitido. Não há editor de desenho sobre fotografias; as avarias são marcadas pelo diagrama e descritas nos componentes.
 
@@ -64,9 +64,9 @@ O botão Compartilhar link abre o WhatsApp com a mensagem preparada. Para arquiv
 
 ## Segurança e retenção
 
-O servidor valida o token Firebase, inclusive revogação, perfil ativo, papel e empresa. As regras do Firestore bloqueiam escrita direta de orçamentos e acesso direto às coleções privadas do checklist. O acesso a perfis de outras empresas também foi restringido. Há validação de origem, tipo/tamanho de requisição, limite de tentativas por rota, escaping de conteúdo e controle de revisão para evitar sobrescritas concorrentes. A Storage é fechada ao acesso direto, e o bucket exige prevenção de acesso público.
+O servidor valida o token Firebase, revogação, perfil, papel e empresa. As regras bloqueiam acesso direto às coleções privadas e às partes Base64. A leitura passa pela API autenticada ou pelo link válido do cliente. São mantidos controles de origem, revisão e limites de requisição.
 
-Links expiram automaticamente em sete dias. Documentos e versões assinadas não são apagados automaticamente: a empresa ainda precisa definir seu prazo de retenção e sua rotina autorizada de descarte e backup. Uploads interrompidos antes do vínculo podem deixar arquivos privados sem referência; inclua sua conferência na rotina de manutenção. O backup JSON antigo não foi convertido em backup de arquivos/versões: para este módulo, use backup do Firestore e do bucket. Não foi alegada certificação jurídica nem conformidade legal automática.
+Links expiram em sete dias. Documentos e versões assinadas não são apagados automaticamente. Uploads interrompidos podem deixar partes privadas sem vínculo; a manutenção deve considerar isso. O backup deste módulo precisa incluir as subcoleções do Firestore. Não há dependência de backup de bucket.
 
 ## Testes e limites de validação
 
@@ -76,4 +76,4 @@ npm run test:browser usa Playwright disponível no ambiente de desenvolvimento e
 
 Foram testados cálculos financeiros, persistência, regras de acesso, versões, divergência, assinatura presencial/remota, PNG vazio, mídia privada, expiração/revogação, prévia do PDF, mouse, toque emulado, limpeza/cancelamento, responsividade e conteúdo do documento. O novo texto e o total de R$ 392,85 foram conferidos no documento. PDFs de revisão foram renderizados e inspecionados visualmente.
 
-Não foram usados usuários reais, câmera física, aparelho físico, bucket de produção, mensagens reais do WhatsApp ou credenciais da implantação. Esses testes precisam ser concluídos na homologação com sua configuração real. A exportação de revisão com Chromium valida a composição HTML; o teste do navegador intercepta as bibliotecas externas de PDF para inspecionar o documento. O download final por jsPDF/html2canvas, as fontes/CDNs e os uploads reais precisam da checagem de homologação.
+Testes usam dados fictícios e serviços isolados. Não houve teste com câmera física, envio real de WhatsApp ou credenciais de produção. O teste de navegador intercepta bibliotecas externas de PDF; a geração final por jsPDF/html2canvas e os uploads na implantação precisam de validação em homologação.

@@ -15,4 +15,4 @@ Nenhum arquivo ou imagem é gravado no Firestore. URLs externas são opcionais.
 
 ## Checklist e descontos
 
-Consulte [o guia de configuração e operação](docs/CHECKLIST-E-DESCONTOS.md) e [o relatório da entrega](RELATORIO-DA-ENTREGA.md). As APIs, o bucket privado e as regras precisam ser configurados/publicados para os novos fluxos funcionarem na nuvem.
+Consulte [o guia de configuração e operação](docs/CHECKLIST-E-DESCONTOS.md) e [o relatório da entrega](RELATORIO-DA-ENTREGA.md). As APIs e as regras do Firestore precisam estar configuradas/publicadas. Fotos, vídeos e assinaturas do checklist são armazenados em Base64 no Firestore, sem Firebase Storage.

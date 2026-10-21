@@ -35,11 +35,11 @@ Não foi executada migração em produção nem regravação automática de docu
 | checklistLinks | Hash de token aleatório, vínculo à vistoria/versão, método, expiração e revogação. |
 | checklistMedia | Referências privadas, tipo, tamanho, vínculo, versão e caminho do objeto. |
 
-Foi acrescentado índice por empresa/data de criação dos checklists. Regras Firestore e Storage foram preparadas, mas precisam ser publicadas no seu projeto. Não há armazenamento de vídeos/imagens Base64 em campos do Firestore.
+Foi acrescentado índice por empresa/data dos checklists. As regras e os índices do Firestore precisam estar publicados. Fotos, vídeos e assinaturas agora são persistidos em Base64, em documentos privados divididos em partes menores que 1 MB.
 
 ## Armazenamento, links, PDF e segurança
 
-Os binários vão para um bucket privado do Cloud Storage. Cada leitura passa pela autorização da API; o cliente recebe um blob temporário. O bucket precisa ter Public Access Prevention=enforced. Tipos de arquivo são limitados e conferidos por assinatura de formato; uploads têm limites de tamanho e quantidade. A assinatura PNG é inspecionada também nos pixels.
+A API persiste Base64 no Firestore, verifica tamanho, tipo e integridade SHA-256 e autoriza cada leitura. Fotos são otimizadas no navegador; assinaturas continuam PNG, com validação dos pixels. Não é necessário Firebase Storage nem configuração de bucket.
 
 O link tem token criptográfico de 256 bits, hash salvo no banco, validade de sete dias e revogação. Trocar link ou versão invalida a autorização anterior. A página pública dispensa conta, mas acessa somente aquela vistoria e as mídias da versão autorizada.
 
@@ -47,7 +47,7 @@ Assinatura/ciência guarda nome informado, declaração, versão exata, data/hor
 
 PDFs usam o HTML do documento, jsPDF e html2canvas já empregados pelo projeto. Foram implementadas páginas por blocos/linhas para preservar legibilidade. A impressão é feita a partir do PDF visualizado. O documento inclui as informações reais salvas/validadas, sem inventar percentuais de desconto.
 
-Há autenticação Firebase com verificação de revogação, perfis ativos, permissão por papel/empresa, validação de origem/requisições, limite por rota, escaping de conteúdo, gravações financeiras pela API e controle de versão/revisão. As regras também restringem leitura/alteração de perfis entre empresas. As coleções privadas e o bucket ficam fechados ao acesso direto do cliente.
+Há autenticação Firebase, verificação de revogação, perfil ativo, autorização por empresa e papel, validação de origem, limite por rota e controle de revisão. Mídias e partes Base64 são privadas e acessadas pela API.
 
 ## Verificações executadas
 
@@ -64,11 +64,11 @@ Há autenticação Firebase com verificação de revogação, perfis ativos, per
 
 A revisão visual preserva a estrutura monocromática da referência, cabeçalho, identificação, vistas dos veículos, acessórios, combustível, serviços, assinatura e rodapé. O logo existente foi reaproveitado em escala cinza, e a tipografia foi aproximada; não é alegada reprodução pixel a pixel.
 
-Os testes de API usam substitutos isolados do Firebase/Storage e não tocaram dados reais. O teste de navegador intercepta as bibliotecas externas de PDF para conferir a composição, e os PDFs de revisão foram exportados pelo Chromium. A execução completa de jsPDF/html2canvas, os serviços reais de autenticação/upload e o compartilhamento efetivo precisam ser validados em homologação com suas credenciais. Não houve teste em aparelho/câmera física nem envio real de mensagem.
+Os testes de API usam Firestore simulado e proíbem a dependência de Storage. Verificam fotos, assinatura remota, partes Base64, integridade, isolamento por empresa e limite de tamanho. O navegador usa dados fictícios e intercepta os serviços externos; a implantação real precisa de validação após o deploy.
 
 ## Configurações e limites restantes
 
-1. Configurar as variáveis Firebase Admin e FIREBASE_STORAGE_BUCKET, permissões do bucket, prevenção de acesso público e ambiente Vercel/API.
+1. Configurar as variáveis Firebase Admin e o ambiente Vercel/API. Não é necessário bucket.
 2. Publicar regras, índice e versão da aplicação de forma coordenada. Um push no Git não publica sozinho as regras Firebase.
 3. Definir os descontos da empresa em Configurações. O código não ativa percentuais de exemplo.
 4. Limite atual: 2,5 MB por arquivo e 60 arquivos por checklist. Vídeos maiores exigem upload direto/resumível autenticado adicional; não há promessa de uma integração que não existe.
@@ -123,7 +123,7 @@ O passo a passo está em docs/CHECKLIST-E-DESCONTOS.md. Nenhuma dependência pag
 | Alterado | package.json |
 | Alterado | README.md |
 | Alterado | service-worker.js |
-| Criado | storage.rules |
+| Removido | storage.rules (Firebase Storage deixou de ser utilizado) |
 | Criado | tests/api.test.js |
 | Criado | tests/browser.test.mjs |
 | Criado | tests/check-syntax.js |

@@ -7,7 +7,7 @@
 - Dados: Firestore, sempre segmentado por `companyId`.
 - Autorização: `js/guards.js`, Firestore Security Rules e Firebase Admin nas APIs.
 - Automações: Vercel Cron protegido por `CRON_SECRET`.
-- Documentos: PDF gerado no navegador, sem upload e sem Base64 persistido.
+- Documentos: PDF gerado no navegador. Fotos, vídeos e assinaturas do checklist são persistidos em Base64 em subcoleções privadas do Firestore.
 
 ## Fluxo principal
 
