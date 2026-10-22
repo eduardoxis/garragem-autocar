@@ -87,3 +87,5 @@ Abra um checklist finalizado e use **Baixar PDF** ou **Enviar PDF ao cliente**. 
 O PDF exibe o cabeçalho apenas na primeira página. As condições ficam em duas colunas, sem dividir descrições curtas em várias linhas de continuação. Observações aproveitam o espaço da última folha de condições e as fotos ficam em pares. A assinatura e os textos completos permanecem no documento.
 
 Use **Selecionar várias fotos ou vídeos de uma vez** para enviar um lote. Cada checklist aceita até 60 arquivos, e é possível continuar adicionando fotos pela câmera. As fotos são otimizadas e salvas em Base64.
+
+A assinatura registrada aparece na primeira folha e também junto da declaração de ciência, na visualização interna, no link de consulta do cliente e no PDF. Se não for possível carregar uma assinatura registrada, a geração do PDF é interrompida para evitar exportar o documento sem ela.
