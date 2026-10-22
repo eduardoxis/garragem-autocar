@@ -6,7 +6,7 @@ import { allowSameOrigin, validJsonRequest, rateLimit, secureResponse } from './
 export const config={api:{bodyParser:{sizeLimit:'4mb'}}};
 const max=2500000;
 function fileType(b){if(b.length>8&&b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';if(b[0]===255&&b[1]===216&&b[2]===255)return 'image/jpeg';if(b.toString('ascii',0,4)==='RIFF'&&b.toString('ascii',8,12)==='WEBP')return 'image/webp';if(b.toString('ascii',4,8)==='ftyp')return 'video/mp4';if(b.subarray(0,4).equals(Buffer.from([26,69,223,163])))return 'video/webm';throw new Error('Formato de arquivo não permitido.');}
-export default async function handler(req,res){secureResponse(res);if(req.method!=='POST'||!allowSameOrigin(req)||!validJsonRequest(req,4000000)||!rateLimit(req,{limit:100}))return res.status(400).json({error:'Solicitação inválida'});
+export default async function handler(req,res){secureResponse(res);if(req.method!=='POST'||!allowSameOrigin(req)||!validJsonRequest(req,4000000)||!rateLimit(req,{limit:240}))return res.status(400).json({error:'Solicitação inválida'});
 try{const {action,id,token,mediaId,base64,kind,version}=req.body||{};const c=await context(req,id,token);
 if(action==='read'){
 if(!validId(mediaId))throw new Error('Arquivo inválido');const m=(await adminDb.doc('checklistMedia/'+mediaId).get()).data();if(!m||m.checklistId!==c.ref.id)throw new Error('Arquivo indisponível');

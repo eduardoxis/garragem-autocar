@@ -81,3 +81,9 @@ Testes usam dados fictícios e serviços isolados. Não houve teste com câmera 
 ## Baixar e enviar o PDF
 
 Abra um checklist finalizado e use **Baixar PDF** ou **Enviar PDF ao cliente**. A assinatura registrada e as fotos são incluídas no arquivo. No celular, prepare o PDF e toque em **Compartilhar arquivo PDF** para escolher o aplicativo disponível. No computador, baixe o arquivo, abra a conversa pelo botão **Abrir WhatsApp do cliente** e anexe o PDF usando o clipe. Não há envio automático nem registro automático de ciência ou envio.
+
+## Layout compacto e várias fotos
+
+O PDF exibe o cabeçalho apenas na primeira página. As condições ficam em duas colunas, sem dividir descrições curtas em várias linhas de continuação. Observações aproveitam o espaço da última folha de condições e as fotos ficam em pares. A assinatura e os textos completos permanecem no documento.
+
+Use **Selecionar várias fotos ou vídeos de uma vez** para enviar um lote. Cada checklist aceita até 60 arquivos, e é possível continuar adicionando fotos pela câmera. As fotos são otimizadas e salvas em Base64.

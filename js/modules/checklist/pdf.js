@@ -9,15 +9,19 @@ export async function makePdf(r,context){
  let signature='';if(r.confirmation?.signatureId){signature=URL.createObjectURL(await mediaRequest({...context,action:'read',mediaId:r.confirmation.signatureId,version:r.version},true));urls.push(signature);}
  host.innerHTML=documentHtml(r,signature);
  await Promise.all([...doc.querySelectorAll('link')].map(l=>l.sheet?Promise.resolve():new Promise((resolve,reject)=>{l.onload=resolve;l.onerror=()=>reject(new Error('Não foi possível carregar o layout do PDF'));}))); 
- for(const m of r.data.media||[]){const blob=await mediaRequest({...context,action:'read',mediaId:m.id,version:r.version},true);const url=URL.createObjectURL(blob);urls.push(url);const section=doc.createElement('section');section.className='checklist-sheet appendix';section.innerHTML='<h1>'+esc(r.code)+' · Versão '+r.version+'</h1><h2>'+esc(m.part)+'</h2><p>'+esc(m.caption)+'</p>';
- if(blob.type.startsWith('image/'))section.innerHTML+='<img class="pdf-media" src="'+url+'" alt="Registro da vistoria">';else section.innerHTML+='<p>Vídeo registrado. Consulte a equipe para acesso seguro ao vídeo deste checklist.</p>';host.append(section);}
- paginateQuoteDocument(host,{selector:'.checklist-sheet.appendix',headerSelector:'.checklist-brand'});
+ const files=r.data.media||[];
+ if(files.length){const appendix=host.querySelector('.checklist-sheet.appendix');const footer=appendix.querySelector(':scope > footer');footer.remove();appendix.insertAdjacentHTML('beforeend','<h2>Fotos e vídeos da vistoria</h2>');let row;
+ for(let i=0;i<files.length;i++){const m=files[i],blob=await mediaRequest({...context,action:'read',mediaId:m.id,version:r.version},true);if(i%2===0){row=doc.createElement('div');row.className='pdf-media-row';appendix.append(row);}const figure=doc.createElement('figure');figure.innerHTML='<figcaption><b>'+esc(m.part)+'</b><br>'+esc(m.caption)+'</figcaption>';if(blob.type.startsWith('image/')){const url=URL.createObjectURL(blob);urls.push(url);const image=doc.createElement('img');image.src=url;image.alt='Registro da vistoria';figure.prepend(image);}else figure.innerHTML+='<p>Vídeo registrado. Consulte a equipe para acesso seguro ao vídeo deste checklist.</p>';row.append(figure);}
+ appendix.append(footer);}
+ for(const sheet of host.querySelectorAll('.checklist-sheet'))sheet.classList.add('pdf-fixed');
+ await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
+ paginateQuoteDocument(host,{selector:'.checklist-sheet.appendix'});
  const pdf=new jsPDF({unit:'mm',format:'a4',compress:true});let page=0;
  for(const sheet of host.querySelectorAll('.checklist-sheet')){
  await Promise.all([...sheet.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
  const canvas=await html2canvas(sheet,{scale:1.5,backgroundColor:'#fff',windowWidth:1000,logging:false});
  // Preserve every pixel for unusually long customer notes instead of shrinking or clipping.
- const pageHeight=Math.ceil(canvas.width*297/210);for(let y=0;y<canvas.height;y+=pageHeight){if(page++)pdf.addPage();const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=Math.min(pageHeight,canvas.height-y);slice.getContext('2d').drawImage(canvas,0,y,canvas.width,slice.height,0,0,canvas.width,slice.height);pdf.addImage(slice.toDataURL('image/jpeg',.94),'JPEG',0,0,210,Math.min(297,slice.height*210/slice.width));}
+ const pageHeight=Math.ceil(canvas.width*297/210);const compactSinglePage=canvas.height<=pageHeight+4;const sliceHeight=compactSinglePage?canvas.height:pageHeight;for(let y=0;y<canvas.height;y+=sliceHeight){if(page++)pdf.addPage();const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=Math.min(sliceHeight,canvas.height-y);slice.getContext('2d').drawImage(canvas,0,y,canvas.width,slice.height,0,0,canvas.width,slice.height);pdf.addImage(slice.toDataURL('image/jpeg',.94),'JPEG',0,0,210,compactSinglePage?297:Math.min(297,slice.height*210/slice.width));}
  }
  return {blob:pdf.output('blob'),name:r.code+'-v'+r.version+'.pdf'};
  }finally{frame.remove();urls.forEach(URL.revokeObjectURL);}
