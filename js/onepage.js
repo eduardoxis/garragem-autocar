@@ -1,3 +1,4 @@
+import { rememberRoute } from './utils/back-navigation.js';
 import { isModuleVersionError, recoverModuleVersion } from './utils/module-recovery.js';
 import { installInputMasks } from './utils/masks.js';
 
@@ -51,6 +52,7 @@ async function loadRoute() {
   window.dispatchEvent(new Event('gac:routechange'));
   const id = ++navigationId;
   const route = currentRoute();
+  rememberRoute(routeHref(route.name, route.query));
   const [title, modulePath] = routes[route.name];
   document.body.dataset.module = route.name;
   document.title = `${title} | Garagem Auto Car`;

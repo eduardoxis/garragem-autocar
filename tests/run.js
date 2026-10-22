@@ -10,3 +10,4 @@ await import('./api-client.test.js');
 await import('./queue.test.js');
 
 await import('./module-recovery.test.js');
+await import('./back-navigation.test.js');

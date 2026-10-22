@@ -1,3 +1,4 @@
+import {cleanBox,prepareBox} from './_queue-box.js';
 import {adminDb} from './_firebase-admin.js';
 import {validId} from './_checklist.js';
 import {allowSameOrigin,validJsonRequest,secureResponse,rateLimit} from './_security.js';
@@ -19,7 +20,7 @@ async function input(tx,profile,data,old){
  if(!service||service.length>80)throw fail('Informe o serviço com até 80 caracteres');
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(forecastDate)||Number.isNaN(Date.parse(forecastDate)))throw fail('Informe a previsão de conclusão');
  if(!queueStatuses.includes(data.status||old?.status||'Aguardando'))throw fail('Status inválido');
- return {vehicleId,serviceOrderId:data.serviceOrderId||'',serviceOrderCode:order?.code||'',vehicle:vehicleName,plate:vehiclePlate,service,mechanicId:data.mechanicId,mechanicName:mechanic.name,status:data.status||old?.status||'Aguardando',forecastDate,internalNotes:String(data.internalNotes||'').slice(0,2000)};
+ return {box:cleanBox(data.box??old?.box??''),vehicleId,serviceOrderId:data.serviceOrderId||'',serviceOrderCode:order?.code||'',vehicle:vehicleName,plate:vehiclePlate,service,mechanicId:data.mechanicId,mechanicName:mechanic.name,status:data.status||old?.status||'Aguardando',forecastDate,internalNotes:String(data.internalNotes||'').slice(0,2000)};
 }
 export default async function handler(req,res){secureResponse(res);
  if(req.method!=='POST'||!allowSameOrigin(req)||!validJsonRequest(req,32768)||!rateLimit(req,{limit:120}))return res.status(400).json({error:'Solicitação inválida'});
@@ -36,17 +37,17 @@ export default async function handler(req,res){secureResponse(res);
   const previous=await tx.get(ref),old=previous.data();
   if(id){ownQueue(old,profile);if(!old.active||old.removed)throw fail('Atendimento já encerrado');if(revision!==old.revision)throw fail('A fila foi alterada. Aguarde a atualização e tente novamente.',409);}
   if(action==='move'){const otherRef=adminDb.doc('queueEntries/'+adjacent.id),other=(await tx.get(otherRef)).data();ownQueue(other,profile);if(!other.active||other.position!==adjacent.position)throw fail('A ordem mudou. Tente novamente.',409);const a=writeQueue(tx,ref,{...old,position:other.position},old,profile,'Reordenação');writeQueue(tx,otherRef,{...other,position:old.position},other,profile,'Reordenação');return a;}
-  if(action==='finish'||action==='remove'){const vehicleLock=lock(profile.companyId,old.plate);await tx.get(vehicleLock);const record=writeQueue(tx,ref,{...old,status:action==='finish'?'Pronto':old.status,active:false,removed:action==='remove',closedAt:now()},old,profile,action==='finish'?'Atendimento finalizado':'Removido da fila');tx.delete(vehicleLock);return record;}
+  if(action==='finish'||action==='remove'){const vehicleLock=lock(profile.companyId,old.plate);await tx.get(vehicleLock);const next={...old,status:action==='finish'?'Pronto':old.status,active:false,removed:action==='remove',closedAt:now()};const commitBox=await prepareBox(tx,profile.companyId,ref.id,next,old);commitBox();const record=writeQueue(tx,ref,next,old,profile,action==='finish'?'Atendimento finalizado':'Removido da fila');tx.delete(vehicleLock);return record;}
   if(action==='update'){
-   if(Object.keys(data).some(k=>!['status','internalNotes'].includes(k)))throw fail('Esta ação permite alterar apenas status e observações.',403);
+   if(Object.keys(data).some(k=>!['status','internalNotes',...(profile.role==='admin'?['box']:[])].includes(k)))throw fail('Esta ação permite alterar apenas status e observações.',403);
    if(data.status!==undefined&&!queueStatuses.includes(data.status))throw fail('Status inválido');
-   return writeQueue(tx,ref,{...old,...(data.status!==undefined?{status:data.status}:{}),...(data.internalNotes!==undefined?{internalNotes:String(data.internalNotes).slice(0,2000)}:{})},old,profile,'Status / observações');
+   const next={...old,...(data.status!==undefined?{status:data.status}:{}),...(data.box!==undefined?{box:cleanBox(data.box)}:{}),...(data.internalNotes!==undefined?{internalNotes:String(data.internalNotes).slice(0,2000)}:{})};const commitBox=await prepareBox(tx,profile.companyId,ref.id,next,old);commitBox();return writeQueue(tx,ref,next,old,profile,'Status / observações / box');
   }
   const safe=await input(tx,profile,data,old),nextLock=lock(profile.companyId,safe.plate),held=(await tx.get(nextLock)).data();
   if(held&&held.entryId!==ref.id)throw fail('Este veículo já está na fila. Edite o atendimento existente.',409);
   let oldLock=null;if(old&&old.plate!==safe.plate){oldLock=lock(profile.companyId,old.plate);await tx.get(oldLock);}
   const metaRef=adminDb.doc('queueMetadata/'+profile.companyId),meta=id?null:(await tx.get(metaRef)).data();const position=old?.position??(meta?.nextPosition||0)+1;
-  const record=writeQueue(tx,ref,{...old,...safe,companyId:profile.companyId,active:true,removed:false,position,enteredAt:old?.enteredAt||now(),createdBy:old?.createdBy||profile.uid},old,profile,id?'Atendimento editado':'Entrada na fila');
+  const next={...old,...safe,companyId:profile.companyId,active:true,removed:false,position,enteredAt:old?.enteredAt||now(),createdBy:old?.createdBy||profile.uid};const commitBox=await prepareBox(tx,profile.companyId,ref.id,next,old);commitBox();const record=writeQueue(tx,ref,next,old,profile,id?'Atendimento editado':'Entrada na fila');
   tx.set(nextLock,{companyId:profile.companyId,entryId:ref.id});if(oldLock)tx.delete(oldLock);if(!id)tx.set(metaRef,{companyId:profile.companyId,nextPosition:position});return record;
  });return res.status(200).json(result);
  }catch(error){return res.status(error.status||400).json({error:error.message||'Não foi possível atualizar a fila.'});}

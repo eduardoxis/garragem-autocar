@@ -100,7 +100,7 @@ test('Fila: integra cadastros, impede duplicação e registra projeção sem dad
  records.set('vehicles/queue-car',{companyId:'test-company',brand:'Chevrolet',model:'Onix',plate:'ABC1D23',deleted:false});records.set('serviceOrders/queue-os',{companyId:'test-company',vehicleId:'queue-car',code:'OS-TESTE',deleted:false});
  const a=await call(queueApi,{action:'save',data:queueData});assert.equal(a.status,200,a.result.error);queueFirst=a.result;assert.equal(queueFirst.vehicle,'Chevrolet Onix');assert.equal(queueFirst.mechanicName,'Carlos Eduardo');
  assert.equal((await call(queueApi,{action:'save',data:queueData})).status,409);
- const display=records.get('queueDisplayEntries/'+queueFirst.id);assert.equal(display.plate,undefined);assert.equal(display.internalNotes,undefined);assert.equal(display.mechanic,'Carlos');
+ const display=records.get('queueDisplayEntries/'+queueFirst.id);assert.equal(display.plate,queueFirst.plate);assert.equal(display.internalNotes,undefined);assert.equal(display.mechanic,'');
  const b=await call(queueApi,{action:'save',data:{...queueData,vehicleId:'',serviceOrderId:'',vehicle:'Fiat Uno',plate:'XYZ9876'}});assert.equal(b.status,200,b.result.error);queueSecond=b.result;
  const moved=await call(queueApi,{action:'move',id:queueSecond.id,revision:queueSecond.revision,direction:'up'});assert.equal(moved.status,200,moved.result.error);
  queueFirst={id:queueFirst.id,...records.get('queueEntries/'+queueFirst.id)};queueSecond=moved.result;
@@ -118,6 +118,26 @@ test('Fila: finalização remove do painel e libera a placa sem apagar históric
  const ended=await call(queueApi,{action:'finish',id:queueFirst.id,revision:queueFirst.revision});assert.equal(ended.status,200,ended.result.error);assert.equal(records.has('queueDisplayEntries/'+queueFirst.id),false);assert.equal(records.get('queueEntries/'+queueFirst.id).active,false);assert.ok((await call(queueApi,{action:'history',id:queueFirst.id})).result.history.length>1);
  const again=await call(queueApi,{action:'save',data:queueData});assert.equal(again.status,200,again.result.error);queueFirst=again.result;
 });
+test('Boxes: ocupação exclusiva, troca, liberação por status, finalização e permissões',async()=>{
+ const invoke=(body)=>call(queueApi,body,{address:'box-test'});
+ const data={...queueData,vehicleId:'',serviceOrderId:'',vehicle:'Honda Civic',plate:'BOX0001',status:'Em serviço',box:'1'};
+ let one=(await invoke({action:'save',data})).result;assert.equal(one.box,'1');
+ const duplicate=await invoke({action:'save',data:{...data,plate:'BOX0002'}});assert.equal(duplicate.status,409);
+ assert.equal((await invoke({action:'save',data:{...data,box:'99',plate:'BOX0003'}})).status,400);
+ one=(await invoke({action:'update',id:one.id,revision:one.revision,data:{status:'Pronto'}})).result;assert.equal(one.box,'');assert.equal(records.get('queueDisplayEntries/'+one.id).box,'');
+ let two=(await invoke({action:'save',data:{...data,plate:'BOX0002'}})).result;assert.equal(two.box,'1');
+ assert.equal((await invoke({action:'update',id:one.id,revision:one.revision,data:{status:'Em serviço',box:'1'}})).status,409);
+ two=(await invoke({action:'update',id:two.id,revision:two.revision,data:{box:'2'}})).result;assert.equal(two.box,'2');
+ one=(await invoke({action:'update',id:one.id,revision:one.revision,data:{status:'Em serviço',box:'1'}})).result;assert.equal(one.box,'1');
+ const original={...staff};staff={uid:'queue-user',companyId:'test-company',name:'Carlos',active:true,role:'mecanico',mechanicId:'queue-mechanic'};
+ assert.equal((await invoke({action:'update',id:one.id,revision:one.revision,data:{box:'3'}})).status,403);
+ one=(await invoke({action:'update',id:one.id,revision:one.revision,data:{status:'Aguardando'}})).result;assert.equal(one.box,'');staff=original;
+ two=(await invoke({action:'finish',id:two.id,revision:two.revision})).result;assert.equal(two.box,'');
+ one=(await invoke({action:'update',id:one.id,revision:one.revision,data:{status:'Em serviço',box:'2'}})).result;assert.equal(one.box,'2');
+ const removed=await invoke({action:'remove',id:one.id,revision:one.revision});assert.equal(removed.status,200);assert.equal(removed.result.box,'');
+ assert.ok(![...records.entries()].some(([path,v])=>path.startsWith('queueBoxLocks/')&&[one.id,two.id].includes(v.entryId)));
+});
+
 test('Mecânico: vínculo do login é único, validado e removido na exclusão',async()=>{
  records.set('users/link-user',{companyId:'test-company',role:'mecanico',active:true});const created=await call(mechanicsApi,{action:'save',data:{name:'Vinculado',status:'Ativo',userId:'link-user'}});assert.equal(created.status,200,created.result.error);assert.equal(records.get('users/link-user').mechanicId,created.result.id);
  assert.equal((await call(mechanicsApi,{action:'save',data:{name:'Duplicado',status:'Ativo',userId:'link-user'}})).status,400);
@@ -130,7 +150,7 @@ test('TV: pareamento, cookie restrito, atualização em tempo real e revogação
  assert.equal((await call(tvApi,{action:'authorize',code:start.result.code,label:'Recepção'})).status,200);
  const req=new EventEmitter();Object.assign(req,{method:'GET',url:'/api/queue-stream',headers:{host:'localhost',origin:'http://localhost',cookie:tvCookie,'user-agent':'TEST-DEVICE'},socket:{remoteAddress:'tv-stream-test'}});
  const frames=[];const res=new EventEmitter();res.setHeader=()=>{};res.flushHeaders=()=>{};res.write=text=>{if(text.startsWith('data: '))frames.push(JSON.parse(text.slice(6)));};res.end=()=>res.emit('close');res.status=function(n){this.code=n;return this;};res.json=v=>{throw Error(JSON.stringify(v));};
- const running=streamApi(req,res);await until(()=>frames.some(f=>f.type==='queue'));let snapshot=frames.findLast(f=>f.type==='queue');assert.ok(snapshot.records.length>0);assert.ok(!JSON.stringify(snapshot).includes('SEGREDO'));assert.equal(snapshot.records[0].plate,undefined);
+ const running=streamApi(req,res);await until(()=>frames.some(f=>f.type==='queue'));let snapshot=frames.findLast(f=>f.type==='queue');assert.ok(snapshot.records.length>0);assert.ok(!JSON.stringify(snapshot).includes('SEGREDO'));assert.ok(snapshot.records[0].plate);assert.equal(snapshot.records[0].mechanic,'');
  const changed=await call(queueApi,{action:'update',id:queueFirst.id,revision:queueFirst.revision,data:{status:'Em serviço'}});assert.equal(changed.status,200,changed.result.error);queueFirst=changed.result;await until(()=>frames.some(f=>f.type==='queue'&&f.records.some(r=>r.id===queueFirst.id&&r.status==='Em serviço')));
  assert.equal((await call(queueApi,{action:'remove',id:queueFirst.id,revision:queueFirst.revision},{auth:false,cookie:tvCookie})).status,401);
  const sessions=(await call(tvApi,{action:'list'})).result.sessions;assert.equal((await call(tvApi,{action:'revoke',id:sessions[0].id})).status,200);await until(()=>frames.some(f=>f.type==='unauthorized'));await running;

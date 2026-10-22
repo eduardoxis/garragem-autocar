@@ -17,7 +17,7 @@ export async function queueProfile(req){
 export const requireQueueAdmin=profile=>{if(profile.role!=='admin')throw fail('Apenas o administrador pode realizar esta ação.',403);};
 export function ownQueue(record,profile){if(!record||record.companyId!==profile.companyId||(profile.role==='mecanico'&&record.mechanicId!==profile.mechanicId))throw fail('Atendimento indisponível.',403);}
 export const queueRecords=snapshot=>snapshot.docs.map(doc=>({id:doc.id,...doc.data()})).filter(r=>r.active&&!r.removed).sort(queueOrder);
-export const tvRecords=snapshot=>snapshot.docs.map(doc=>publicQueueItem({id:doc.id,...doc.data()})).sort(queueOrder);
+export const tvRecords=snapshot=>queueRecords(snapshot).map(publicQueueItem);
 export function writeQueue(tx,ref,record,old,profile,action){
  const at=now();const next={...record,updatedAt:at,updatedBy:profile.uid,revision:(old?.revision||0)+1};
  tx.set(ref,next);

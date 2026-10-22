@@ -1,3 +1,4 @@
+import { goBack, homeRoute } from './utils/back-navigation.js';
 import { logout } from './firebase/authentication.js';
 import { createNavbar } from './components/navbar.js';
 import { createMobileNav, createSidebar } from './components/sidebar.js';
@@ -6,12 +7,13 @@ import { setupNotifications } from './components/notifications.js';
 
 export function mountShell(profile, { title, active, notifications = 0 }) {
   const root = document.querySelector('#app');
-  root.innerHTML = `${createSidebar(profile, active)}<main class="main">${createNavbar(title, notifications)}<div id="page-content" class="page"></div></main>${createMobileNav(profile, active)}`;
+  root.innerHTML = `${createSidebar(profile, active)}<main class="main">${createNavbar(title, notifications, profile.role)}<div id="page-content" class="page"></div></main>${createMobileNav(profile, active)}`;
   root.querySelector('#global-search-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const term = root.querySelector('#global-search')?.value.trim();
     if (term) location.hash = `#busca?q=${encodeURIComponent(term)}`;
   });
+  root.querySelector('[data-shell-back]')?.addEventListener('click', () => goBack(root, homeRoute(profile.role)));
   setupNotifications(profile);
   root.onclick = async event => {
     const target = event.target.closest('[data-action="logout"]');

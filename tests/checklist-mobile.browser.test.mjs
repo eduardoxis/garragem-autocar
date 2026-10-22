@@ -48,7 +48,7 @@ try{
  assert.equal(await page.locator('.checklist-mobile-card').evaluateAll(cards=>cards.every(c=>c.scrollWidth<=c.clientWidth)),true);
  await page.screenshot({path:out+'/checklist-lista-'+width+'.png',fullPage:true});
  }
- assert.equal(listCalls,calls,'Resizing and rendering cards must not query Firebase again');
+ assert.equal(await page.locator('.mobile-header-brand img').isVisible(),true);assert.ok(await page.locator('.mobile-header-brand img').evaluate(i=>i.naturalWidth>0));assert.equal(listCalls,calls,'Resizing and rendering cards must not query Firebase again');
  assert.equal(await page.locator('.mobile-nav a').allTextContents().then(labels=>labels.join(',')),'Início,Oficina,Novo,Clientes,Mais');assert.equal(await page.locator('.mobile-create').getAttribute('href'),'#orcamentos?action=new');
  await page.locator('.checklist-mobile-card').last().locator('footer').scrollIntoViewIfNeeded();assert.equal(await page.locator('.checklist-mobile-card').last().locator('footer').evaluate(e=>e.getBoundingClientRect().bottom<=document.querySelector('.mobile-nav').getBoundingClientRect().top),true,'Last card actions stay above bottom navigation');
  await page.locator('#search-checklist').fill('XYZ9A87');assert.equal(await page.locator('.checklist-mobile-card').count(),1);assert.match(await page.locator('#checklist-cards').innerText(),/CHK-FINAL/);
@@ -59,7 +59,7 @@ try{
  const card=code=>page.locator('.checklist-mobile-card').filter({has:page.getByRole('heading',{name:code,exact:true})});
  assert.equal(await card('CHK-TESTE · v1').locator('[data-checklist-action=pdf]').isDisabled(),true);
  const download=page.waitForEvent('download');await card('CHK-FINAL · v1').locator('[data-checklist-action=pdf]').click();assert.equal((await download).suggestedFilename(),'test.pdf');assert.equal(pdfCalls,1);
- await card('CHK-TESTE · v1').locator('[data-checklist-action=open]').click();await page.locator('#edit').waitFor();await page.locator('#back').click();
+ await card('CHK-TESTE · v1').locator('[data-checklist-action=open]').click();await page.locator('#edit').waitFor();await page.locator('[data-shell-back]').click();
  await card('CHK-TESTE · v1').locator('[data-checklist-action=edit]').click();await page.locator('#checklist-form').waitFor();await page.locator('#back').click();
  page.once('dialog',d=>d.accept('Correção solicitada no teste'));await card('CHK-FINAL · v1').locator('[data-checklist-action=edit]').click();await page.locator('#checklist-form').waitFor();assert.match(await page.locator('#page-content>h1').innerText(),/CHK-FINAL/);assert.equal(extraRecords[0].version,2);await page.locator('#back').click();
  await Promise.all([page.waitForEvent('dialog').then(d=>d.dismiss()),card('CHK-TESTE · v1').locator('[data-checklist-action=delete]').click()]);await page.waitForFunction(()=>!document.querySelector('[data-checklist-action=delete]').disabled);assert.equal(deleteCalls,0);
