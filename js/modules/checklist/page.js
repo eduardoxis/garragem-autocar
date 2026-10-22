@@ -1,3 +1,5 @@
+import { checklistRows, checklistSummary } from './list-desktop.js';
+import { filterChecklists, checklistPage } from '../../utils/checklist-list.js';
 import { checklistCards } from './list-cards.js';
 import { uploadSection } from './upload-ui.js';
 import { getIcon } from '../../components/icons.js';
@@ -26,30 +28,47 @@ const select=(name,label,options,value='',extra='')=>'<label class="field">'+lab
 const area=(name,label,value='')=>'<label class="field full">'+label+'<textarea class="textarea" name="'+name+'">'+esc(value)+'</textarea></label>';
 function clearUrls(){mediaUrls.forEach(URL.revokeObjectURL);mediaUrls=[];}
 function listState(error){page.innerHTML='<section class="page-heading"><div><h1>Checklist de entrada</h1><p>Vistorias, registros e ciência do cliente.</p></div></section><section class="card"><div class="card-body" role="'+(error?'alert':'status')+'"><h2>'+(!error?'Carregando checklists…':error.status===503?'Configuração do servidor pendente':'Não foi possível carregar os checklists')+'</h2><p>'+esc(error?.message||'Aguarde enquanto buscamos os registros.')+'</p>'+(error?'<p>'+esc(error.status===503?'O administrador precisa configurar o Firebase Admin no ambiente publicado da Vercel e fazer um novo deploy.':'Tente novamente. Se o erro persistir, informe a mensagem acima ao administrador.')+'</p>'+(error.status===503&&profile.role==='admin'?'<p>Vercel → Settings → Environment Variables → Production:</p><ul><li>FIREBASE_ADMIN_PROJECT_ID</li><li>FIREBASE_ADMIN_CLIENT_EMAIL</li><li>FIREBASE_ADMIN_PRIVATE_KEY</li></ul><p>Use os dados da conta de serviço do seu projeto Firebase. Não informe a chave privada no chat. Fotos e assinaturas são salvas em Base64, sem Firebase Storage.</p>':'')+'<button class="btn btn-primary" id="retry-checklists" type="button">Tentar novamente</button>':'')+'</div></section>';if(error)page.querySelector('#retry-checklists').onclick=run(list);}
-async function list(){page.classList.add('checklist-list-page');const screen=++screenSequence;clearUrls();listState();records=[];let after=null;try{do{const result=await listRecords('checklists',profile.companyId,{after,pageSize:25});if(screen!==screenSequence||!page.isConnected)return;records.push(...result.records);after=result.hasMore?result.cursor:null;}while(after);}catch(error){if(screen!==screenSequence||!page.isConnected)return;listState(error);return;}page.innerHTML='<section class="page-heading"><div><h1>Checklist de entrada</h1><p>Vistorias, registros e ciência do cliente.</p></div><button class="btn btn-primary" id="new">Novo checklist</button></section><div class="checklist-tools checklist-list-filters"><input id="search-checklist" class="input" placeholder="Cliente, placa ou número"><input id="employee" class="input" placeholder="Funcionário"><label class="checklist-mobile-date"><span>Data inicial</span><input id="from" class="input" type="date" aria-label="Data inicial"></label><label class="checklist-mobile-date"><span>Data final</span><input id="to" class="input" type="date" aria-label="Data final"></label><select id="state" class="select"><option value="">Todos os status e métodos</option>'+['Em preenchimento','Finalizado','Cancelado','Não enviado','Aguardando confirmação','Assinatura pendente','Confirmado por assinatura presencial','Confirmado por assinatura remota','Ciência confirmada por link','Ciência registrada via WhatsApp','Revisão solicitada'].map(s=>'<option>'+s+'</option>').join('')+'</select></div><div id="checklist-stats" class="checklist-notice"></div><div class="card table-wrap checklist-desktop-table"><table class="table"><thead><tr><th>Checklist / Entrada</th><th>Cliente</th><th>Veículo / KM</th><th>Responsável</th><th>Vistoria</th><th>Ciência / método</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div class="checklist-mobile-cards" id="checklist-cards"></div>';
-const params=new URLSearchParams(location.hash.split('?')[1]||'');page.querySelector('#search-checklist').value=params.get('plate')||'';
-const draw=()=>{const q=page.querySelector('#search-checklist').value.toLowerCase(),employee=page.querySelector('#employee').value.toLowerCase(),state=page.querySelector('#state').value,from=page.querySelector('#from').value,to=page.querySelector('#to').value;const filtered=records.filter(r=>[r.code,r.data.customerName,r.data.plate].join(' ').toLowerCase().includes(q)&&String(r.data.responsible).toLowerCase().includes(employee)&&(!state||r.status===state||r.confirmation.status===state)&&(!from||r.data.entryDate.slice(0,10)>=from)&&(!to||r.data.entryDate.slice(0,10)<=to));page.querySelector('#checklist-cards').innerHTML=checklistCards(filtered,{canDelete:profile.role==='admin'});page.querySelector('#checklist-stats').textContent=filtered.length+' checklist(s) · '+filtered.filter(r=>r.status==='Em preenchimento').length+' em preenchimento · '+filtered.filter(r=>r.confirmation.status==='Revisão solicitada').length+' revisões solicitadas';page.querySelector('#rows').innerHTML=filtered.map(r=>'<tr><td>'+esc(r.code)+' · v'+r.version+'<br>'+esc(formatDateTime(r.data.entryDate))+'</td><td>'+esc(r.data.customerName)+'</td><td>'+esc(r.data.brand+' '+r.data.model)+'<br>'+esc(r.data.plate)+' · '+esc(r.data.mileage)+' KM</td><td>'+esc(r.data.responsible)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.confirmation.status)+'<br>'+esc(r.confirmation.method||'—')+'</td><td><button class="btn" data-open="'+r.id+'">Abrir</button></td></tr>').join('')||'<tr><td colspan="7">Nenhum checklist encontrado.</td></tr>';};page.querySelectorAll('.checklist-tools input,.checklist-tools select').forEach(i=>i.addEventListener('input',draw));draw();
-page.querySelector('#new').onclick=run(async()=>{current=null;await edit();});page.querySelector('#rows').onclick=async e=>{const b=e.target.closest('[data-open]');if(b)await run(async()=>{current=await getRecord('checklists',profile.companyId,b.dataset.open);viewVersion=false;await details();})();};
-page.querySelector('#checklist-cards').onclick=async event=>{
- const button=event.target.closest('[data-checklist-action]');if(!button||button.disabled)return;
- const screen=screenSequence;button.disabled=true;
- await run(async()=>{
- const record=await getRecord('checklists',profile.companyId,button.dataset.id);
- if(screen!==screenSequence||!page.isConnected)return;
+const initialParams=new URLSearchParams(location.hash.split('?')[1]||'');
+const listFilters={search:initialParams.get('plate')||'',employee:'',from:'',to:'',status:'',page:1,pageSize:10};
+async function list(){
+ page.classList.add('checklist-list-page');const screen=++screenSequence;clearUrls();listState();records=[];let after=null;
+ try{do{const result=await listRecords('checklists',profile.companyId,{after,pageSize:25});if(screen!==screenSequence||!page.isConnected)return;records.push(...result.records);after=result.hasMore?result.cursor:null;}while(after);}
+ catch(error){if(screen!==screenSequence||!page.isConnected)return;listState(error);return;}
+ const icon=(name)=>'<span class="checklist-filter-icon">'+getIcon(name,20)+'</span>';
+ page.innerHTML='<section class="page-heading"><div><h1>Checklist de entrada</h1><p>Vistorias, registros e ciência do cliente.</p></div><button class="btn btn-primary" id="new"><span class="checklist-new-icon">'+getIcon('plus',22)+'</span>Novo checklist</button></section><div class="checklist-summary" id="checklist-summary"></div><div class="checklist-tools checklist-list-filters"><label class="checklist-filter-control filter-search">'+icon('search')+'<input id="search-checklist" class="input" placeholder="Cliente, placa ou número" aria-label="Pesquisar cliente, placa ou número"></label><label class="checklist-filter-control filter-employee">'+icon('user')+'<input id="employee" class="input" placeholder="Funcionário" aria-label="Funcionário responsável"></label><label class="checklist-mobile-date">'+icon('calendar')+'<span>Data inicial</span><input id="from" class="input" type="date" aria-label="Data inicial"></label><label class="checklist-mobile-date">'+icon('calendar')+'<span>Data final</span><input id="to" class="input" type="date" aria-label="Data final"></label><label class="checklist-filter-control filter-state">'+icon('filter')+'<select id="state" class="select" aria-label="Status e método"><option value="">Todos os status e métodos</option>'+['Em preenchimento','Finalizado','Cancelado','Não enviado','Aguardando confirmação','Assinatura pendente','Confirmado por assinatura presencial','Confirmado por assinatura remota','Ciência confirmada por link','Ciência registrada via WhatsApp','Revisão solicitada'].map(s=>'<option>'+s+'</option>').join('')+'</select></label></div><div id="checklist-stats" class="checklist-notice"></div><div class="card table-wrap checklist-desktop-table"><table class="table"><colgroup>'+[15,12,13,9,12,13,26].map(width=>'<col style="width:'+width+'%">').join('')+'</colgroup><thead><tr><th>Checklist / Entrada</th><th>Cliente</th><th>Veículo / KM</th><th>Responsável</th><th>Vistoria</th><th>Ciência / método</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div><div class="checklist-mobile-cards" id="checklist-cards"></div><div class="checklist-pagination" id="checklist-pagination"><p id="checklist-page-count"></p><div><button type="button" class="btn btn-icon" id="checklist-prev" aria-label="Página anterior">'+getIcon('arrowLeft',18)+'</button><span id="checklist-page-number" aria-live="polite"></span><button type="button" class="btn btn-icon" id="checklist-next" aria-label="Próxima página"><span class="checklist-next-icon">'+getIcon('arrowLeft',18)+'</span></button><label><span class="sr-only">Checklists por página</span><select class="select" id="checklist-page-size"><option value="10">10 por página</option><option value="25">25 por página</option><option value="50">50 por página</option></select></label></div></div>';
+ for(const [id,key]of [['search-checklist','search'],['employee','employee'],['from','from'],['to','to'],['state','status'],['checklist-page-size','pageSize']])page.querySelector('#'+id).value=listFilters[key];
+ const draw=()=>{
+ const filtered=filterChecklists(records,listFilters),chunk=checklistPage(filtered,listFilters.page,listFilters.pageSize);listFilters.page=chunk.current;
+ page.querySelector('#checklist-summary').innerHTML=checklistSummary(filtered);
+ page.querySelector('#checklist-cards').innerHTML=checklistCards(filtered,{canDelete:profile.role==='admin'});
+ page.querySelector('#checklist-stats').textContent=filtered.length+' checklist(s) · '+filtered.filter(r=>r.status==='Em preenchimento').length+' em preenchimento · '+filtered.filter(r=>r.confirmation?.status==='Revisão solicitada').length+' revisões solicitadas';
+ page.querySelector('#rows').innerHTML=checklistRows(chunk.records,{canDelete:profile.role==='admin'});
+ page.querySelector('#checklist-page-count').textContent=chunk.total?'Exibindo '+chunk.start+'–'+chunk.end+' de '+chunk.total+' checklists':'Nenhum checklist encontrado';
+ page.querySelector('#checklist-page-number').textContent=chunk.current+' / '+chunk.pages;
+ page.querySelector('#checklist-prev').disabled=chunk.current===1;page.querySelector('#checklist-next').disabled=chunk.current===chunk.pages;
+ };
+ for(const [id,key]of [['search-checklist','search'],['employee','employee'],['from','from'],['to','to'],['state','status']])page.querySelector('#'+id).addEventListener('input',event=>{listFilters[key]=event.target.value;listFilters.page=1;draw();});
+ page.querySelector('#checklist-page-size').onchange=event=>{listFilters.pageSize=Number(event.target.value);listFilters.page=1;draw();};
+ page.querySelector('#checklist-prev').onclick=()=>{listFilters.page--;draw();};page.querySelector('#checklist-next').onclick=()=>{listFilters.page++;draw();};draw();
+ page.querySelector('#new').onclick=run(async()=>{current=null;await edit();});
+ let busy=false;
+ const handleAction=async event=>{
+ const button=event.target.closest('[data-checklist-action]');if(!button||button.disabled||busy)return;busy=true;
+ const activeScreen=screenSequence;button.disabled=true;
+ try{await run(async()=>{
+ const record=await getRecord('checklists',profile.companyId,button.dataset.id);if(activeScreen!==screenSequence||!page.isConnected)return;
  const mode=button.dataset.checklistAction;
- if(mode==='pdf'){
- const result=await makePdf(record,{id:record.id});if(screen!==screenSequence||!page.isConnected)return;
- await request({action:'pdf',id:record.id,revision:record.revision});downloadPdf(result);return;
- }
+ if(mode==='pdf'){const result=await makePdf(record,{id:record.id});if(activeScreen!==screenSequence||!page.isConnected)return;await request({action:'pdf',id:record.id,revision:record.revision});downloadPdf(result);return;}
  current=record;viewVersion=false;
- if(mode==='open')await details();
- else if(mode==='edit')await editCurrentChecklist();
+ if(mode==='open')await details();else if(mode==='edit')await editCurrentChecklist();
  else if(mode==='delete'&&profile.role==='admin'){
  if(!confirm('Excluir o checklist '+record.code+'? Ele será removido da listagem e os links do cliente deixarão de funcionar. O histórico será preservado.'))return;
  await action('delete');createToast('Checklist excluído');await list();
  }
- })();if(button.isConnected)button.disabled=false;
-};}
+ })();}finally{busy=false;if(button.isConnected)button.disabled=false;}
+ };
+ page.querySelector('#rows').onclick=handleAction;page.querySelector('#checklist-cards').onclick=handleAction;
+}
 async function editCurrentChecklist(){
  if(current.status==='Em preenchimento'){await edit();return;}
  const resolution=prompt('Descreva a correção ou providência adotada:');

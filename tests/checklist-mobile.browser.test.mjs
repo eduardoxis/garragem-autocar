@@ -36,7 +36,7 @@ await page.route('https://cdn.jsdelivr.net/npm/html2canvas@*/+esm',route=>route.
 try{
  const visit=async()=>{await page.goto(base+'/__editor');await page.locator('#rows tr').first().waitFor({state:'attached'});};
  if(process.env.BASELINE_CHECKLIST_PAGE){
- await page.goto(base+'/__editor?baseline=1');await page.locator('#rows tr').first().waitFor();await page.waitForFunction(()=>document.querySelector('link[data-checklist]')?.sheet);const before=await page.screenshot();await writeFile(out+'/desktop-antes.png',before);await visit();await page.waitForFunction(()=>document.querySelector('link[data-checklist]')?.sheet);const after=await page.screenshot();await writeFile(out+'/desktop-depois.png',after);assert.ok(after.equals(before),'Desktop must remain pixel-identical; inspect desktop-antes.png and desktop-depois.png');console.log('Desktop: screenshot identical to the previous layout');
+ await page.setViewportSize({width:390,height:900});await page.goto(base+'/__editor?baseline=1');await page.locator('.checklist-mobile-card').first().waitFor();await page.waitForFunction(()=>document.querySelector('link[data-checklist]')?.sheet);const selectStyle=await page.locator('#state').evaluate(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return [s.fontFamily,s.fontSize,s.fontWeight,s.color,r.x,r.y,r.width,r.height];});const before=await page.screenshot({mask:[page.locator('#state')]});await writeFile(out+'/mobile-antes.png',before);await visit();await page.waitForFunction(()=>document.querySelector('link[data-checklist]')?.sheet);assert.deepEqual(await page.locator('#state').evaluate(e=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return [s.fontFamily,s.fontSize,s.fontWeight,s.color,r.x,r.y,r.width,r.height];}),selectStyle);const after=await page.screenshot({mask:[page.locator('#state')]});await writeFile(out+'/mobile-depois.png',after);assert.ok(after.equals(before),'Mobile must remain pixel-identical');console.log('Mobile: screenshot identical to the approved layout');await page.setViewportSize({width:1280,height:900});
  }else await visit();
  assert.equal(await page.locator('.checklist-mobile-cards').isVisible(),false);assert.equal(await page.locator('.checklist-desktop-table').isVisible(),true);
  const calls=listCalls;
@@ -44,7 +44,7 @@ try{
  await page.setViewportSize({width,height:900});await page.locator('.checklist-mobile-card').first().waitFor();
  assert.equal(await page.locator('.checklist-desktop-table').isVisible(),false);assert.equal(await page.locator('.checklist-mobile-card').count(),3);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'No horizontal page scroll at '+width);
- assert.equal(await page.locator('.checklist-card-action').evaluateAll(buttons=>buttons.every(b=>b.getBoundingClientRect().height>=44)),true);
+ assert.equal(await page.locator('.checklist-mobile-card .checklist-card-action').evaluateAll(buttons=>buttons.every(b=>b.getBoundingClientRect().height>=44)),true);
  assert.equal(await page.locator('.checklist-mobile-card').evaluateAll(cards=>cards.every(c=>c.scrollWidth<=c.clientWidth)),true);
  await page.screenshot({path:out+'/checklist-lista-'+width+'.png',fullPage:true});
  }
@@ -62,8 +62,8 @@ try{
  await card('CHK-TESTE · v1').locator('[data-checklist-action=open]').click();await page.locator('#edit').waitFor();await page.locator('[data-shell-back]').click();
  await card('CHK-TESTE · v1').locator('[data-checklist-action=edit]').click();await page.locator('#checklist-form').waitFor();await page.locator('#back').click();
  page.once('dialog',d=>d.accept('Correção solicitada no teste'));await card('CHK-FINAL · v1').locator('[data-checklist-action=edit]').click();await page.locator('#checklist-form').waitFor();assert.match(await page.locator('#page-content>h1').innerText(),/CHK-FINAL/);assert.equal(extraRecords[0].version,2);await page.locator('#back').click();
- await Promise.all([page.waitForEvent('dialog').then(d=>d.dismiss()),card('CHK-TESTE · v1').locator('[data-checklist-action=delete]').click()]);await page.waitForFunction(()=>!document.querySelector('[data-checklist-action=delete]').disabled);assert.equal(deleteCalls,0);
+ await Promise.all([page.waitForEvent('dialog').then(d=>d.dismiss()),card('CHK-TESTE · v1').locator('[data-checklist-action=delete]').click()]);await page.waitForFunction(()=>!document.querySelector('.checklist-mobile-card [data-checklist-action=delete]').disabled);assert.equal(deleteCalls,0);
  await Promise.all([page.waitForEvent('dialog').then(d=>d.accept()),card('CHK-TESTE · v1').locator('[data-checklist-action=delete]').click()]);await page.waitForFunction(()=>document.querySelectorAll('.checklist-mobile-card').length===2);assert.equal(deleteCalls,1);
- role='mecanico';await visit();assert.equal(await page.locator('[data-checklist-action=delete]').count(),0);assert.equal(await page.locator('[data-checklist-action=edit]').count(),2);
+ role='mecanico';await visit();assert.equal(await page.locator('[data-checklist-action=delete]').count(),0);assert.equal(await page.locator('.checklist-mobile-card [data-checklist-action=edit]').count(),2);
  assert.deepEqual(errors,[]);console.log('Mobile: 320–760px, filters, shared loading, PDF, open/edit/new version, confirmed deletion, permissions and bottom menu: OK');
 }finally{await browser.close();server.closeAllConnections();server.close();}

@@ -5,6 +5,9 @@ import { listRecords } from '../../firebase/firestore.js';
 import { getIcon } from '../../components/icons.js';
 import { currency } from '../../utils/currency.js';
 
+Chart.defaults.font.family = 'Inter, sans-serif';
+await document.fonts.ready;
+
 const profile = await requireAuth({ role:'admin' });
 const page = mountShell(profile || { name:'Configuração pendente',role:'admin' }, { title:'Dashboard',active:'dashboard' });
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));

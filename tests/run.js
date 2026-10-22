@@ -11,3 +11,5 @@ await import('./queue.test.js');
 
 await import('./module-recovery.test.js');
 await import('./back-navigation.test.js');
+
+await import('./checklist-list.test.js');

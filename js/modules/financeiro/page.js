@@ -8,6 +8,9 @@ import { listRecords, saveRecord, softDelete } from '../../firebase/firestore.js
 import { currency } from '../../utils/currency.js';
 import { applyInputMasks, formDataObject } from '../../utils/masks.js';
 
+Chart.defaults.font.family = 'Inter, sans-serif';
+await document.fonts.ready;
+
 const profile=await requireAuth({role:'admin'});
 const page=mountShell(profile||{name:'Configuração pendente',role:'admin'},{title:'Financeiro',active:'financeiro'});
 const escapeHtml=value=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
