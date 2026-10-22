@@ -1,3 +1,4 @@
+import { isModuleVersionError, recoverModuleVersion } from './utils/module-recovery.js';
 import { installInputMasks } from './utils/masks.js';
 
 installInputMasks();
@@ -58,10 +59,11 @@ async function loadRoute() {
   try {
     await import(`${modulePath}?route=${id}`);
   } catch (error) {
-    console.error(error);
     if (id !== navigationId) return;
+    if (recoverModuleVersion(error)) return;
+    console.error(error);
     document.querySelector('#app').innerHTML = '<main class="route-error"><img src="assets/garagem-auto-car-logo.png" alt="Garagem Auto Car"><h1>Não foi possível abrir esta área</h1><p>Tente novamente. Se o problema continuar, entre novamente no sistema.</p><button class="btn btn-primary" id="retry-route">Tentar novamente</button></main>';
-    document.querySelector('#retry-route')?.addEventListener('click', loadRoute);
+    document.querySelector('#retry-route')?.addEventListener('click', isModuleVersionError(error) ? () => location.reload() : loadRoute);
   }
 }
 

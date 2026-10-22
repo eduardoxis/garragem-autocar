@@ -1,4 +1,4 @@
-const CACHE='garagem-auto-car-shell-v6';
+const CACHE='garagem-auto-car-shell-v7';
 const SHELL=['/login.html','/index.html','/404.html','/js/onepage.js','/css/variables.css','/css/global.css','/css/components.css','/css/responsive.css'];
 self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())
@@ -16,7 +16,7 @@ self.addEventListener('fetch',event=>{
   if(requestUrl.origin!==self.location.origin)return;
 
   event.respondWith(
-    fetch(event.request).catch(async()=>{
+    fetch(event.request, {cache:'no-cache'}).catch(async()=>{
       const cached=await caches.match(event.request);
       return cached||Response.error();
     })
