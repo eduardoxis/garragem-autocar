@@ -92,3 +92,30 @@
 .checklist-upload .attachment-remove:hover{background:#fff2f2}
 @media(max-width:1100px){.upload-capture{flex-wrap:wrap}.upload-capture .btn{margin-left:62px}}
 @media(max-width:700px){.checklist-upload .card-body{padding:18px 14px}.checklist-form>.checklist-upload>.card-header{padding:17px}.upload-capture-options{grid-template-columns:1fr}.upload-attachment{grid-template-columns:1fr;gap:16px}.attachment-fields{max-width:none}.attachment-preview{height:230px}.upload-dropzone{padding:20px 12px}.upload-capture .btn{margin-left:0}.upload-capture{gap:10px}.upload-capture>div{min-width:150px}.checklist-upload .card-header h2{font-size:21px}}
+
+/* Shared interactive and printed inspection points match the original image circles. */
+.vehicle-reference>.inspection-point{position:absolute;transform:translate(-50%,-50%);width:32px;height:32px;padding:0;border:0;background:transparent;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#111;box-sizing:border-box}
+.vehicle-reference>.inspection-point>span{width:1.65%;width:calc(100% * .38);aspect-ratio:1;border:1.4px solid #111;border-radius:50%;background:white;box-sizing:border-box}
+.vehicle-reference>.inspection-point.is-marked>span{background:#111}
+.vehicle-reference>button.inspection-point:hover{background:#00000008}
+.vehicle-reference>span.inspection-point{pointer-events:none;width:1.65%;height:auto;aspect-ratio:1}
+.vehicle-reference>span.inspection-point>span{width:100%;height:100%}
+.damage-legend{background:#f3f4f6;color:#222;font-size:11px!important;line-height:1.4!important;padding:6px 9px;margin:0!important;text-align:right}
+.checklist-form .damage-legend{max-width:794px;margin:0 auto 20px!important}
+.checklist-form [name=description]{min-height:160px;resize:vertical;line-height:1.6}
+.fuel-control,.accessory-control{min-width:0;border:1px solid #ccd2db;border-radius:8px;padding:16px}
+.fuel-control legend,.accessory-control legend{font-weight:700;padding:0 6px}
+.fuel-control .fuel-gauge{margin:8px 0 18px}.fuel-control .fuel-gauge>div{background:#334155;transition:width .15s}
+.fuel-options{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.checklist-form .fuel-options label,.checklist-form .accessory-choice label{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;min-height:40px}
+.fuel-options label:has(:checked){background:#edf2f7;border-radius:6px;font-weight:700}
+.accessory-control{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}
+.accessory-choice{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;border-bottom:1px solid #e1e5ea;gap:6px}
+.accessory-choice strong{font-size:14px;font-weight:500}.checklist-form input[type=radio]{accent-color:#222;width:18px;height:18px}
+.checklist-sheet .accessory-answer{white-space:nowrap;font-size:10px!important;color:#111!important}
+.checklist-sheet .fuel-box small{display:block;margin:10px 0}
+.checklist-sheet.pdf-fixed>.pdf-flow{display:flex;flex-direction:column;gap:7px;min-width:0}
+.pdf-flow>h2{margin:6px 0;font-size:17px}.pdf-flow>p{white-space:pre-wrap;line-height:1.4;margin:3px 0}
+.pdf-flow .paper-signature{margin-top:0;min-height:0}
+@media(max-width:650px){.accessory-control{grid-template-columns:1fr}.vehicle-reference>button.inspection-point{width:26px;height:26px}.vehicle-reference>button.inspection-point>span{width:7px;height:7px}.fuel-options{gap:4px}.fuel-options label{font-size:12px}}
+.pdf-flow>.paper-signature .signature-image,.pdf-flow>.paper-signature .signature-image img{min-height:60px;height:60px}

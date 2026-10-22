@@ -13,10 +13,12 @@ export async function makePdf(r,context){
  if(files.length){const appendix=host.querySelector('.checklist-sheet.appendix');const footer=appendix.querySelector(':scope > footer');footer.remove();appendix.insertAdjacentHTML('beforeend','<h2>Fotos e vídeos da vistoria</h2>');let row;
  for(let i=0;i<files.length;i++){const m=files[i],blob=await mediaRequest({...context,action:'read',mediaId:m.id,version:r.version},true);if(i%2===0){row=doc.createElement('div');row.className='pdf-media-row';appendix.append(row);}const figure=doc.createElement('figure');figure.innerHTML='<figcaption><b>'+esc(m.part)+'</b><br>'+esc(m.caption)+'</figcaption>';if(blob.type.startsWith('image/')){const url=URL.createObjectURL(blob);urls.push(url);const image=doc.createElement('img');image.src=url;image.alt='Registro da vistoria';figure.prepend(image);}else figure.innerHTML+='<p>Vídeo registrado. Consulte a equipe para acesso seguro ao vídeo deste checklist.</p>';row.append(figure);}
  appendix.append(footer);}
- for(const sheet of host.querySelectorAll('.checklist-sheet'))sheet.classList.add('pdf-fixed');
+ // Flow the entire checklist as one document, with one header and one final footer.
+ const first=host.querySelector('.checklist-sheet');const appendix=host.querySelector('.checklist-sheet.appendix');
+ first.append(...appendix.children);appendix.remove();first.classList.add('pdf-fixed','compact-report');
  if(r.confirmation?.signatureId){try{await Promise.all([...host.querySelectorAll('[data-checklist-signature] img')].map(image=>image.decode()));}catch{throw new Error('Não foi possível carregar a assinatura no PDF. Tente gerar novamente.');}}
  await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
- paginateQuoteDocument(host,{selector:'.checklist-sheet.appendix'});
+ paginateQuoteDocument(host,{selector:'.checklist-sheet',footerMode:'last'});
  const pdf=new jsPDF({unit:'mm',format:'a4',compress:true});let page=0;
  for(const sheet of host.querySelectorAll('.checklist-sheet')){
  await Promise.all([...sheet.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})));
