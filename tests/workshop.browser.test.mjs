@@ -8,7 +8,7 @@ import {registerHooks,createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {queueStore} from './helpers/queue-store.js';
 const root=fileURLToPath(new URL('..',import.meta.url)),out=resolve(process.env.QA_OUTPUT_DIR||'work/queue-qa');await mkdir(out,{recursive:true});
-const {db,records}=queueStore();
+const {db,records,stats}=queueStore();
 records.set('users/admin',{uid:'admin',name:'Administrador',role:'admin',active:true,companyId:'company'});records.set('users/mech',{uid:'mech',name:'Carlos',role:'mecanico',active:true,companyId:'company',mechanicId:'m1'});
 records.set('mechanics/m1',{companyId:'company',name:'Carlos Eduardo',status:'Ativo',userId:'mech'});records.set('mechanics/m2',{companyId:'company',name:'Marcos',status:'Ativo'});
 records.set('vehicles/car1',{companyId:'company',brand:'Chevrolet',model:'Onix',plate:'ABC1D23',deleted:false});records.set('serviceOrders/os1',{companyId:'company',vehicleId:'car1',code:'OS-0001',service:'Troca de óleo',deleted:false});
@@ -55,5 +55,5 @@ try{
  await office.clock.install({time:new Date(day+'T23:59:59-03:00')});await office.clock.runFor(2000);await office.waitForFunction(previous=>document.querySelector('#queue-from').value!==previous,day);await office.locator(`[data-entry="${entries[2].id}"]`).waitFor();assert.deepEqual(records.get('queueEntries/'+entries[2].id),before);
  await office.setViewportSize({width:390,height:844});await office.screenshot({path:resolve(out,'gerencia-oficina-administrativa-mobile.png'),fullPage:true});assert.equal(await office.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await office.locator('#tv-sessions').click();await office.locator('[data-revoke]').click();await office.locator('.modal-confirm').last().click();await worktv.locator('#tv-pairing').waitFor({state:'visible'});assert.equal(await worktv.locator('.workshop-job').count(),0);assert.equal(await tv.locator('#tv-pairing').isVisible(),false);
- assert.deepEqual(errors,[]);console.log('Oficina: tabela compartilhada, quatro telas, continuidade e boxes, transferência, filtros, expediente/feriados, TV privada independente, reconexão, revogação e mobile: OK');
+ assert.equal(stats.starts.get('queueEntries'),1,'As quatro telas e suas reconexões devem usar uma única assinatura de fila nesta instância');assert.deepEqual(errors,[]);console.log('Oficina: tabela compartilhada, quatro telas, continuidade e boxes, transferência, filtros, expediente/feriados, TV privada independente, reconexão, revogação e mobile: OK');
 }finally{await browser.close();server.closeAllConnections();server.close();hook.deregister();}

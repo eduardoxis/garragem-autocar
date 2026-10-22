@@ -23,7 +23,7 @@ export default async function handler(req,res){
    const start=after?records.findIndex(record=>record.id===after)+1:0;
    if(after&&start===0)throw new Error('Página indisponível. Atualize a lista.');
    const page=records.slice(start,start+pageSize),hasMore=start+pageSize<records.length;
-   return res.status(200).json({records:page,cursor:hasMore?page.at(-1).id:null,hasMore});
+   return res.status(200).json({records:page,total:records.length,cursor:hasMore?page.at(-1).id:null,hasMore});
   }
   const profile=await requireAdmin(req);
   if(!['save','delete'].includes(action))throw new Error('Ação inválida');

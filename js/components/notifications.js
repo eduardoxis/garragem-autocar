@@ -3,6 +3,7 @@ import { getIcon } from './icons.js';
 
 const CLOSED_STATUSES = ['concluida', 'concluído', 'concluido', 'entregue', 'cancelada', 'cancelado', 'completed', 'cancelled', 'pago', 'recebido'];
 const notificationCache = new Map();
+window.addEventListener('gac:datachange',()=>notificationCache.clear());
 const filters = [
   ['all', 'Todas'], ['orcamentos', 'Orçamentos'], ['oficina', 'Oficina'], ['estoque', 'Estoque'], ['financeiro', 'Financeiro']
 ];
@@ -32,12 +33,11 @@ async function recordsFor(collection, companyId) {
   catch (error) { console.warn(`Não foi possível carregar alertas de ${collection}.`, error); return []; }
 }
 
-async function collectNotifications(profile) {
-  const cached = notificationCache.get(profile.companyId);
-  if (cached && Date.now() - cached.at < 60_000) return cached.notes;
+async function fetchNotifications(profile) {
   const [reminders, products, serviceOrders, financial] = await Promise.all([
-    recordsFor('reminders', profile.companyId), recordsFor('products', profile.companyId),
-    recordsFor('serviceOrders', profile.companyId), recordsFor('financial', profile.companyId)
+    recordsFor('reminders', profile.companyId), profile.role === 'admin' ? recordsFor('products', profile.companyId) : [],
+    ['admin', 'atendente', 'mecanico'].includes(profile.role) ? recordsFor('serviceOrders', profile.companyId) : [],
+    profile.role === 'admin' ? recordsFor('financial', profile.companyId) : []
   ]);
   const notes = [];
   reminders.filter(item => !isClosed(item.status) && priorityFor(item.scheduledAt) !== 'normal').forEach(item => {
@@ -65,8 +65,12 @@ async function collectNotifications(profile) {
   });
   const order = { urgent:0, high:1, normal:2 };
   const sorted = notes.sort((a, b) => order[a.priority] - order[b.priority] || a.time - b.time);
-  notificationCache.set(profile.companyId, { at: Date.now(), notes: sorted });
   return sorted;
+}
+
+function collectNotifications(profile){
+ const key=profile.uid+':'+profile.companyId+':'+profile.role,cached=notificationCache.get(key);if(cached&&Date.now()-cached.at<60000)return cached.promise;
+ const entry={at:Date.now()};entry.promise=fetchNotifications(profile).catch(error=>{if(notificationCache.get(key)===entry)notificationCache.delete(key);throw error;});notificationCache.set(key,entry);return entry.promise;
 }
 
 function renderPanel(notes, active = 'all') {
@@ -86,7 +90,7 @@ export function setupNotifications(profile) {
   if (!button || !profile?.companyId) return;
   let notes = [];
   let active = 'all';
-  let panel = null;
+  let panel = null,disposed=false;
   const setBadge = count => {
     const badge = document.querySelector('#notification-count');
     if (!badge) return;
@@ -103,7 +107,7 @@ export function setupNotifications(profile) {
     panel = document.querySelector('#notifications-panel');
     notes = await collectNotifications(profile);
     setBadge(notes.length);
-    if (!panel) return;
+    if (!panel||disposed) return;
     panel.outerHTML = renderPanel(notes, active);
     panel = document.querySelector('#notifications-panel');
     bindPanel();
@@ -116,6 +120,6 @@ export function setupNotifications(profile) {
   button.addEventListener('click', event => { event.stopPropagation(); if (panel) close(); else open(); });
   const dismissOnOutsideClick = event => { if (panel && !panel.contains(event.target) && !button.contains(event.target)) close(); };
   document.addEventListener('click', dismissOnOutsideClick);
-  window.__notificationsCleanup = () => document.removeEventListener('click', dismissOnOutsideClick);
-  collectNotifications(profile).then(items => { notes = items; setBadge(items.length); });
+  window.__notificationsCleanup = () => {disposed=true;close();document.removeEventListener('click',dismissOnOutsideClick);};
+  collectNotifications(profile).then(items => { if(disposed)return;notes = items; setBadge(items.length); });
 }

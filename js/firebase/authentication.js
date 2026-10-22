@@ -1,3 +1,4 @@
+import {invalidateQueries} from '../services/query-cache.js';
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -9,9 +10,10 @@ import {
 import { auth } from './firebase-config.js';
 
 export async function login(email, password, remember) {
+  invalidateQueries();
   await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
   return signInWithEmailAndPassword(auth, email.trim(), password);
 }
 
-export const logout = () => signOut(auth);
+export const logout = () => {invalidateQueries();return signOut(auth);};
 export const recoverPassword = email => sendPasswordResetEmail(auth, email.trim());

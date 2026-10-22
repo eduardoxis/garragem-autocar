@@ -1,3 +1,4 @@
+import { invalidateQueries } from '../../services/query-cache.js';
 import { createModal } from '../../components/modal.js';
 import { createToast } from '../../components/toast.js';
 import { getIcon } from '../../components/icons.js';
@@ -26,10 +27,12 @@ export async function createAuthorizedUser({ name, email, password, role, compan
     const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     createdUser = credential.user;
     await updateProfile(createdUser, { displayName:name });
+    invalidateQueries(['users']);
     await setDoc(doc(db, 'users', createdUser.uid), {
       name, email, role, companyId, active:true, deleted:false,
       createdAt:serverTimestamp(), updatedAt:serverTimestamp()
     });
+    invalidateQueries(['users']);
     profileSaved = true;
     return createdUser.uid;
   } catch (error) {
