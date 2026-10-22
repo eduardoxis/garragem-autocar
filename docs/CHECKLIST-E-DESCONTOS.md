@@ -91,3 +91,9 @@ Use **Selecionar várias fotos ou vídeos de uma vez** para enviar um lote. Cada
 A assinatura registrada aparece na primeira folha e também junto da declaração de ciência, na visualização interna, no link de consulta do cliente e no PDF. Se não for possível carregar uma assinatura registrada, a geração do PDF é interrompida para evitar exportar o documento sem ela.
 
 A área de fotos permite arrastar e soltar arquivos ou usar o botão **Escolher arquivos**. Os atalhos de câmera e vídeo continuam disponíveis. Cada cartão reúne prévia, parte do veículo, legenda e remoção; o contador é atualizado ao remover uma imagem. Salve o checklist para conservar as alterações de parte, legenda ou remoção.
+
+## Carregamento de dados
+
+A listagem e a leitura do Checklist passam pela camada de dados compartilhada do projeto (`listRecords` e `getRecord`). As chamadas de servidor e as mídias utilizam o mesmo serviço `api` usado em Orçamentos, preservando autenticação e respostas de erro. Os dados do Checklist continuam no Firestore e as mídias continuam em Base64.
+
+O registro e seu histórico são buscados juntos, sem uma segunda requisição de histórico ao abrir. As respostas de telas anteriores não atualizam o formulário aberto por **Continuar preenchimento**. As operações de versão, assinatura e link público permanecem validadas no servidor; não são necessárias novas regras ou migração para esta padronização.

@@ -6,3 +6,4 @@ await import('./discounts.test.js');
 await import('./checklist.test.js');
 await import('./api.test.js');
 await import('./signature.test.js');
+await import('./api-client.test.js');

@@ -11,6 +11,7 @@ export async function getProfile(uid) {
 }
 
 export async function listRecords(collectionName, companyId, options = {}) {
+  if(collectionName==='checklists'){const result=await api('checklists',{action:'list',after:options.after||null});return {records:result.records,cursor:result.nextCursor||null,hasMore:Boolean(result.nextCursor)};}
   const clauses = [where('companyId', '==', companyId), where('deleted', '==', false)];
   if (options.status) clauses.push(where('status', '==', options.status));
   const pageSize = options.pageSize || 20;
@@ -62,4 +63,17 @@ export async function writeAudit({ companyId, userId, userName, action, module, 
     newValue: newValue ? JSON.stringify(newValue) : null,
     deleted: false, createdAt: serverTimestamp()
   });
+}
+
+export async function getRecord(collectionName,companyId,id,options={}){
+  if(collectionName==='checklists'){
+    const result=await api('checklists',{action:'get',id,...(options.version?{version:options.version}:{})});
+    if(result.companyId!==companyId)throw Object.assign(new Error('Acesso negado'),{status:403});
+    return result;
+  }
+  const snap=await getDoc(doc(db,collectionName,id));
+  if(!snap.exists())throw new Error('Registro indisponível');
+  const record=snap.data();
+  if(record.companyId!==companyId||record.deleted)throw new Error('Registro indisponível');
+  return {id:snap.id,...record};
 }
