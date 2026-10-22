@@ -89,3 +89,5 @@ O PDF exibe o cabeçalho apenas na primeira página. As condições ficam em dua
 Use **Selecionar várias fotos ou vídeos de uma vez** para enviar um lote. Cada checklist aceita até 60 arquivos, e é possível continuar adicionando fotos pela câmera. As fotos são otimizadas e salvas em Base64.
 
 A assinatura registrada aparece na primeira folha e também junto da declaração de ciência, na visualização interna, no link de consulta do cliente e no PDF. Se não for possível carregar uma assinatura registrada, a geração do PDF é interrompida para evitar exportar o documento sem ela.
+
+A área de fotos permite arrastar e soltar arquivos ou usar o botão **Escolher arquivos**. Os atalhos de câmera e vídeo continuam disponíveis. Cada cartão reúne prévia, parte do veículo, legenda e remoção; o contador é atualizado ao remover uma imagem. Salve o checklist para conservar as alterações de parte, legenda ou remoção.
