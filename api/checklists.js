@@ -9,9 +9,10 @@ export default async function handler(req,res){
  secureResponse(res);if(req.method!=='POST')return res.status(405).json({error:'Método não permitido'});
  if(!allowSameOrigin(req)||!validJsonRequest(req,350000)||!rateLimit(req,{limit:80}))return res.status(400).json({error:'Solicitação inválida'});
  try{const {action,id,data,token,revision,method,version}=req.body||{};
- if(action==='list'){const p=await requireStaff(req,['admin','atendente','mecanico']);let query=adminDb.collection('checklists').where('companyId','==',p.companyId).orderBy('createdAt','desc').limit(25);if(req.body.after){if(!validId(req.body.after))throw new Error('Página inválida');const cursor=await adminDb.doc('checklists/'+req.body.after).get();if(!cursor.exists||cursor.data().companyId!==p.companyId)throw new Error('Página inválida');query=query.startAfter(cursor);}const q=await query.get();return res.status(200).json({records:q.docs.map(d=>({id:d.id,...d.data()})),nextCursor:q.size===25?q.docs.at(-1).id:null});}
+ if(action==='list'){const p=await requireStaff(req,['admin','atendente','mecanico']);let query=adminDb.collection('checklists').where('companyId','==',p.companyId).orderBy('createdAt','desc').limit(25);if(req.body.after){if(!validId(req.body.after))throw new Error('Página inválida');const cursor=await adminDb.doc('checklists/'+req.body.after).get();if(!cursor.exists||cursor.data().companyId!==p.companyId)throw new Error('Página inválida');query=query.startAfter(cursor);}const q=await query.get();return res.status(200).json({records:q.docs.filter(d=>!d.data().deleted).map(d=>({id:d.id,...d.data()})),nextCursor:q.size===25?q.docs.at(-1).id:null});}
  if(action==='save'&&!id){const p=await requireStaff(req,['admin','atendente','mecanico']);const content=cleanChecklist(data);const ref=adminDb.collection('checklists').doc();await validateRelations(p.companyId,content);await validateResponsible(p.companyId,content);if(content.media.length)throw new Error('Salve antes de anexar arquivos.');const r={companyId:p.companyId,code:'CHK-'+ref.id.slice(0,8).toUpperCase(),version:1,revision:1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:content,createdAt:stamp(),updatedAt:stamp(),createdBy:p.uid};const b=adminDb.batch();b.set(ref,r);b.set(ref.collection('events').doc(),{at:stamp(),action:'Criação / início da vistoria',actor:p.uid});await b.commit();return res.status(200).json({id:ref.id,...r});}
  const c=await context(req,id,token);const actor=c.public?'Cliente por link':c.profile.uid;
+ if(action==='delete'&&(c.public||c.profile.role!=='admin'))throw Object.assign(new Error('Somente o administrador pode excluir checklists.'),{status:403});
  if(action==='get'){
  const history=c.public?[]:(await c.ref.collection('events').orderBy('at','asc').get()).docs.map(d=>d.data());
  const versions=c.public?[]:(await c.ref.collection('versions').get()).docs.map(d=>({id:d.id,...d.data()}));
@@ -20,7 +21,7 @@ export default async function handler(req,res){
  if(c.public&&!['confirm','sign','review'].includes(action))throw new Error('Ação não permitida.');
  let content;if(action==='save'){content=cleanChecklist(data);await validateRelations(c.profile.companyId,content);for(const m of content.media){if(!validId(m.id))throw new Error('Arquivo inválido');const meta=(await adminDb.doc('checklistMedia/'+m.id).get()).data();if(!meta||meta.checklistId!==c.ref.id||meta.kind==='signature')throw new Error('Arquivo inválido');}}
  const result=await adminDb.runTransaction(async tx=>{
- const snap=await tx.get(c.ref),r=snap.data();if(!r)throw new Error('Registro indisponível');
+ const snap=await tx.get(c.ref),r=snap.data();if(!r||r.deleted)throw new Error('Registro indisponível');
  if(c.public){const link=(await tx.get(c.linkRef)).data();if(!link)throw new Error('Link revogado');canRespond(r,link);}
  if(!c.public && revision!==r.revision)throw new Error('O registro foi alterado. Reabra antes de continuar.');
  let patch={},extra={};
@@ -30,6 +31,7 @@ export default async function handler(req,res){
  else if(action==='finalize'){if(r.status!=='Em preenchimento')throw new Error('Vistoria já finalizada');patch={status:'Finalizado',finalizedAt:stamp()};}
  else if(action==='new-version'){if(r.status==='Em preenchimento')throw new Error('A versão atual ainda está em edição');tx.set(c.ref.collection('versions').doc(String(r.version)),r);patch={version:r.version+1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:r.data};}
  else if(action==='cancel'){patch={status:'Cancelado'};}
+ else if(action==='delete'){patch={deleted:true,deletedAt:stamp(),deletedBy:actor,activeLinkHash:null};if(r.activeLinkHash)tx.set(adminDb.doc('checklistLinks/'+r.activeLinkHash),{revoked:true},{merge:true});}
  else if(action==='link'){
  if(r.status!=='Finalizado'||r.confirmation?.confirmedAt||r.confirmation?.status==='Revisão solicitada')throw new Error('Finalize uma versão ainda não confirmada e sem revisão pendente.');if(!['signature','link','whatsapp'].includes(method))throw new Error('Método inválido');
  const raw=randomBytes(32).toString('hex');const expiresAt=Date.now()+7*86400000;

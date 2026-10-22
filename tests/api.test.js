@@ -4,7 +4,7 @@ import { png } from './helpers/png.js';
 import { registerHooks } from 'node:module';import test from 'node:test';import assert from 'node:assert/strict';
 const records=new Map();const watchers=new Set();const notify=()=>queueMicrotask(()=>watchers.forEach(fn=>fn()));const watch=(read,callback)=>{let active=true;const emit=async()=>{const value=await read();if(active)callback(value);};watchers.add(emit);void emit();return ()=>{active=false;watchers.delete(emit);};};let serial=0;const clone=v=>structuredClone(v);let staff={uid:'staff1',name:'Funcionário de teste',active:true,role:'admin',companyId:'test-company'};
 const ref=path=>({path,id:path.split('/').at(-1),collection:name=>col(path+'/'+name),onSnapshot:callback=>watch(()=>ref(path).get(),callback),async get(){const v=records.get(path);return {exists:v!==undefined,id:path.split('/').at(-1),data:()=>v===undefined?undefined:clone(v)};},async set(v,opt){records.set(path,opt?.merge?{...records.get(path),...clone(v)}:clone(v));notify();}});
-function col(path,filters=[],sort=null,max=Infinity){return {onSnapshot:callback=>watch(()=>col(path,filters,sort,max).get(),callback),doc:id=>ref(path+'/'+(id||'mock'+String(++serial).padStart(10,'0'))),where:(k,op,v)=>col(path,[...filters,[k,v]],sort,max),orderBy:(k,dir='asc')=>col(path,filters,[k,dir],max),limit:n=>col(path,filters,sort,n),async get(){let rows=[...records.entries()].filter(([k,v])=>k.startsWith(path+'/')&&k.split('/').length===path.split('/').length+1&&filters.every(([key,value])=>v[key]===value));if(sort)rows.sort((a,b)=>String(a[1][sort[0]]).localeCompare(String(b[1][sort[0]]))*(sort[1]==='asc'?1:-1));const docs=rows.slice(0,max).map(([k,v])=>({id:k.split('/').at(-1),data:()=>clone(v)}));return {docs,size:docs.length};}};}
+function col(path,filters=[],sort=null,max=Infinity,after=null){return {onSnapshot:callback=>watch(()=>col(path,filters,sort,max,after).get(),callback),doc:id=>ref(path+'/'+(id||'mock'+String(++serial).padStart(10,'0'))),where:(k,op,v)=>col(path,[...filters,[k,v]],sort,max,after),orderBy:(k,dir='asc')=>col(path,filters,[k,dir],max,after),limit:n=>col(path,filters,sort,n,after),startAfter:snap=>col(path,filters,sort,max,snap.id),async get(){let rows=[...records.entries()].filter(([k,v])=>k.startsWith(path+'/')&&k.split('/').length===path.split('/').length+1&&filters.every(([key,value])=>v[key]===value));if(sort)rows.sort((a,b)=>String(a[1][sort[0]]).localeCompare(String(b[1][sort[0]]))*(sort[1]==='asc'?1:-1));if(after){const index=rows.findIndex(([key])=>key.split('/').at(-1)===after);rows=rows.slice(index+1);}const docs=rows.slice(0,max).map(([k,v])=>({id:k.split('/').at(-1),data:()=>clone(v)}));return {docs,size:docs.length};}};}
 const db={doc:ref,collection:col,batch(){const writes=[];return {set:(r,v)=>writes.push([r,v]),async commit(){for(const [r,v]of writes)records.set(r.path,clone(v));}};},async runTransaction(fn){const writes=[];let hasWrite=false;const tx={async get(r){if(hasWrite)throw new Error('Firestore exige leituras antes de escritas');return r.get();},set(r,v,opt){hasWrite=true;writes.push([r,v,opt]);},update(r,v){hasWrite=true;writes.push([r,v,{merge:true}]);},delete(r){hasWrite=true;writes.push([r,null,{delete:true}]);}};const result=await fn(tx);for(const [r,v,opt]of writes){if(opt?.delete){records.delete(r.path);notify();}else await r.set(v,opt);}return result;}};
 globalThis.__testAdmin={adminDb:db,FieldValue:{serverTimestamp:()=>new Date().toISOString()},async requireStaff(req,roles){if(!req.headers.authorization)throw Object.assign(new Error('Não autenticado'),{status:401});if(!staff.active||!roles.includes(staff.role))throw Object.assign(new Error('Acesso negado'),{status:403});return clone(staff);},async requireAdmin(req){if(!req.headers.authorization||staff.role!=='admin')throw Object.assign(new Error('Acesso negado'),{status:403});return clone(staff);}};
 delete process.env.FIREBASE_STORAGE_BUCKET;
@@ -14,7 +14,7 @@ const settings=(await import('../api/settings.js')).default;
 const mechanicsApi=(await import('../api/mechanics.js')).default;
 const media=(await import('../api/checklist-media.js')).default;
 const checklist=(await import('../api/checklists.js')).default;const quotes=(await import('../api/quotes.js')).default;
-async function call(handler,body,{auth=true,origin='http://localhost',cookie='',agent='TEST-DEVICE'}={}){let status=200,result;const headers={};const req={url:handler===queueApi?'/api/queue':handler===tvApi?'/api/queue-tv':'/api/other',method:'POST',headers:{host:'localhost',origin,cookie,'user-agent':agent,'content-type':'application/json','content-length':String(JSON.stringify(body).length),...(auth?{authorization:'Bearer TEST'}:{})},body,socket:{remoteAddress:handler===quotes?'offline-quotes':handler===media?'offline-media':'offline-checklist'}};const res={setHeader(k,v){headers[k]=v;},status(n){status=n;return this;},json(v){result=v;return this;},send(v){result=v;return this;}};await handler(req,res);return {status,result,headers};}
+async function call(handler,body,{auth=true,origin='http://localhost',cookie='',agent='TEST-DEVICE',address}={}){let status=200,result;const headers={};const req={url:handler===queueApi?'/api/queue':handler===tvApi?'/api/queue-tv':'/api/other',method:'POST',headers:{host:'localhost',origin,cookie,'user-agent':agent,'content-type':'application/json','content-length':String(JSON.stringify(body).length),...(auth?{authorization:'Bearer TEST'}:{})},body,socket:{remoteAddress:address|| (handler===quotes?'offline-quotes':handler===media?'offline-media':'offline-checklist')}};const res={setHeader(k,v){headers[k]=v;},status(n){status=n;return this;},json(v){result=v;return this;},send(v){result=v;return this;}};await handler(req,res);return {status,result,headers};}
 records.set('mechanics/mechanic1',{companyId:'test-company',name:'Mecânico de teste',status:'Ativo',deleted:false});
 const base={responsibleId:'mechanic1',responsible:'Nome adulterado',customerName:'Cliente de teste',brand:'Marca',model:'Modelo',plate:'ABC1D23',entryDate:'2026-10-21T10:00',keys:1,mileage:100,fuelLevel:'0.5',description:'Descrição persistida\nCom duas linhas',damagedPoints:['top-front','left-roof'],accessories:{Antena:'Sim',GPS:'Não'}};
 let r,link,oldToken;
@@ -135,6 +135,35 @@ test('TV: pareamento, cookie restrito, atualização em tempo real e revogação
  assert.equal((await call(queueApi,{action:'remove',id:queueFirst.id,revision:queueFirst.revision},{auth:false,cookie:tvCookie})).status,401);
  const sessions=(await call(tvApi,{action:'list'})).result.sessions;assert.equal((await call(tvApi,{action:'revoke',id:sessions[0].id})).status,200);await until(()=>frames.some(f=>f.type==='unauthorized'));await running;
  assert.equal((await call(tvApi,{action:'start'},{auth:false,cookie:tvCookie,agent:'OTHER-DEVICE'})).result.authorized,false);
+});
+
+test('Checklist: exclusão administrativa preserva histórico e arquivos e bloqueia acesso e links',async()=>{
+ const deletionCall=(handler,body,options={})=>call(handler,body,{address:'offline-deletion',...options});
+ const created=await deletionCall(checklist,{action:'save',data:base});assert.equal(created.status,200);let local=created.result;
+ const uploaded=await deletionCall(media,{action:'upload',id:local.id,kind:'attachment',base64:png(true).toString('base64')});assert.equal(uploaded.status,200);
+ local=(await deletionCall(checklist,{action:'save',id:local.id,revision:local.revision,data:{...base,media:[{id:uploaded.result.id,part:'Geral',caption:'Arquivo preservado'}]}})).result;
+ local=(await deletionCall(checklist,{action:'finalize',id:local.id,revision:local.revision})).result;
+ const linked=(await deletionCall(checklist,{action:'link',id:local.id,revision:local.revision,method:'link'})).result;local=linked;
+ const before=clone(records.get('checklists/'+local.id));
+ staff.role='atendente';assert.equal((await deletionCall(checklist,{action:'delete',id:local.id,revision:local.revision})).status,403);
+ staff.role='mecanico';assert.equal((await deletionCall(checklist,{action:'delete',id:local.id,revision:local.revision})).status,403);staff.role='admin';
+ staff.companyId='other';assert.equal((await deletionCall(checklist,{action:'delete',id:local.id,revision:local.revision})).status,403);staff.companyId='test-company';
+ assert.equal((await deletionCall(checklist,{action:'delete',id:local.id,revision:0})).status,400);
+ assert.equal((await deletionCall(checklist,{action:'delete',token:linked.token},{auth:false})).status,403);
+ const deleted=await deletionCall(checklist,{action:'delete',id:local.id,revision:local.revision});assert.equal(deleted.status,200,deleted.result.error);
+ const stored=records.get('checklists/'+local.id);assert.equal(stored.deleted,true);assert.equal(stored.deletedBy,'staff1');assert.deepEqual(stored.data,before.data);assert.deepEqual(stored.confirmation,before.confirmation);
+ assert.ok(records.has('checklistMedia/'+uploaded.result.id));assert.ok([...records.entries()].some(([path,v])=>path.startsWith('checklists/'+local.id+'/events/')&&v.action==='delete'&&v.actor==='staff1'));
+ assert.ok((await deletionCall(checklist,{action:'list'})).result.records.every(r=>!r.deleted));
+ assert.equal((await deletionCall(checklist,{action:'get',id:local.id})).status,403);assert.equal((await deletionCall(media,{action:'read',id:local.id,mediaId:uploaded.result.id})).status,403);
+ assert.equal((await deletionCall(checklist,{action:'get',token:linked.token},{auth:false})).status,400);
+ assert.equal((await deletionCall(checklist,{action:'get',id:r.id})).status,200,'Outros checklists continuam disponíveis');
+});
+
+test('Checklist: paginação atravessa uma página inteira de registros excluídos sem perder os seguintes',async()=>{
+ for(let i=0;i<26;i++)records.set('checklists/pagination'+String(i).padStart(2,'0'),{companyId:'test-company',createdAt:'2099-01-01T00:00:'+String(59-i).padStart(2,'0')+'Z',deleted:i<25,data:base});
+ const first=await call(checklist,{action:'list'},{address:'pagination-case'});assert.equal(first.status,200);assert.equal(first.result.records.length,0);assert.equal(first.result.nextCursor,'pagination24');
+ const second=await call(checklist,{action:'list',after:first.result.nextCursor},{address:'pagination-case'});assert.equal(second.status,200);assert.ok(second.result.records.some(r=>r.id==='pagination25'));assert.ok(second.result.records.every(r=>!r.deleted));
+ for(let i=0;i<26;i++)records.delete('checklists/pagination'+String(i).padStart(2,'0'));
 });
 
 test.after(()=>hook.deregister());
