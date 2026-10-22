@@ -4,7 +4,7 @@ export const accessories=['Antena','GPS','Tapetes','Carregador celular','Rádio'
 export const declaration='Declaro que tive acesso ao checklist de entrada do veículo identificado neste documento e estou ciente das condições e observações nele registradas.';
 export const disclaimer='Esta ciência não autoriza reparos, não aprova orçamentos e não confirma serviços adicionais.';
 export function cleanChecklist(data){
- const result={};for(const k of ['customerId','customerName','document','phone','address','vehicleId','brand','model','manufactureYear','modelYear','plate','color','entryDate','responsible','reason','services','notes','belongings','accessoriesNotes','warningLights','quoteId','serviceOrderId'])result[k]=String(data[k]??'').trim().slice(0,k==='notes'||k==='services'?4000:500);
+ const result={};for(const k of ['customerId','customerName','document','phone','address','vehicleId','brand','model','manufactureYear','modelYear','plate','color','entryDate','responsibleId','responsible','reason','services','notes','belongings','accessoriesNotes','warningLights','quoteId','serviceOrderId'])result[k]=String(data[k]??'').trim().slice(0,k==='notes'||k==='services'?4000:500);
  if(!result.customerName||!result.plate||!result.brand||!result.model||!result.entryDate||Number.isNaN(Date.parse(result.entryDate)))throw new Error('Preencha cliente, veículo, placa e entrada.');
  for(const k of ['mileage','keys']){const n=Number(data[k]);if(!Number.isFinite(n)||n<0)throw new Error('Quilometragem/chaves inválidas.');result[k]=n;}
  if(!['0','0.25','0.5','0.75','1'].includes(String(data.fuelLevel)))throw new Error('Combustível inválido.');result.fuelLevel=String(data.fuelLevel);

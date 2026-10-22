@@ -3,6 +3,7 @@ import { installInputMasks } from './utils/masks.js';
 installInputMasks();
 
 const routes = {
+  mecanicos: ['Mecânicos', './modules/mecanicos/page.js'],
   checklist: ['Checklist', './modules/checklist/page.js'],
   dashboard: ['Dashboard', './modules/dashboard/page.js'],
   clientes: ['Clientes', './modules/clientes/page.js'],

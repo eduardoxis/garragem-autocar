@@ -11,6 +11,7 @@ export async function getProfile(uid) {
 }
 
 export async function listRecords(collectionName, companyId, options = {}) {
+  if(collectionName==='mechanics')return api('mechanics',{action:'list',after:options.after||null,pageSize:options.pageSize,activeOnly:options.activeOnly||false});
   if(collectionName==='checklists'){const result=await api('checklists',{action:'list',after:options.after||null});return {records:result.records,cursor:result.nextCursor||null,hasMore:Boolean(result.nextCursor)};}
   const clauses = [where('companyId', '==', companyId), where('deleted', '==', false)];
   if (options.status) clauses.push(where('status', '==', options.status));
@@ -31,6 +32,7 @@ export async function getCompanySettings(companyId) {
 }
 
 export async function saveRecord(collectionName, companyId, data, id = null) {
+  if(collectionName==='mechanics')return (await api('mechanics',{action:'save',id,data})).id;
   if(collectionName==='quotes'){const result=await api('quotes',{id,data,action:id&&!data.items?'followup':undefined});return result.id;}
   const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
   if (id) {
@@ -43,7 +45,7 @@ export async function saveRecord(collectionName, companyId, data, id = null) {
   return created.id;
 }
 
-export const softDelete = (collectionName, id, userId) => updateDoc(doc(db, collectionName, id), {
+export const softDelete = (collectionName, id, userId) => collectionName==='mechanics'?api('mechanics',{action:'delete',id}):updateDoc(doc(db, collectionName, id), {
   deleted: true, deletedAt: serverTimestamp(), deletedBy: userId, updatedAt: serverTimestamp()
 });
 
@@ -52,6 +54,7 @@ export async function createQuoteWithReminder(quote, companyId, followUpDays = 1
 }
 
 export async function countRecords(collectionName, companyId, extra = []) {
+  if(collectionName==='mechanics')return (await api('mechanics',{action:'count'})).count;
   const q = query(collection(db, collectionName), where('companyId', '==', companyId), where('deleted', '==', false), ...extra);
   return (await getCountFromServer(q)).data().count;
 }
@@ -66,6 +69,7 @@ export async function writeAudit({ companyId, userId, userName, action, module, 
 }
 
 export async function getRecord(collectionName,companyId,id,options={}){
+  if(collectionName==='mechanics')return api('mechanics',{action:'get',id});
   if(collectionName==='checklists'){
     const result=await api('checklists',{action:'get',id,...(options.version?{version:options.version}:{})});
     if(result.companyId!==companyId)throw Object.assign(new Error('Acesso negado'),{status:403});

@@ -10,7 +10,7 @@ export default async function handler(req,res){
  if(!allowSameOrigin(req)||!validJsonRequest(req,350000)||!rateLimit(req,{limit:80}))return res.status(400).json({error:'Solicitação inválida'});
  try{const {action,id,data,token,revision,method,version}=req.body||{};
  if(action==='list'){const p=await requireStaff(req,['admin','atendente','mecanico']);let query=adminDb.collection('checklists').where('companyId','==',p.companyId).orderBy('createdAt','desc').limit(25);if(req.body.after){if(!validId(req.body.after))throw new Error('Página inválida');const cursor=await adminDb.doc('checklists/'+req.body.after).get();if(!cursor.exists||cursor.data().companyId!==p.companyId)throw new Error('Página inválida');query=query.startAfter(cursor);}const q=await query.get();return res.status(200).json({records:q.docs.map(d=>({id:d.id,...d.data()})),nextCursor:q.size===25?q.docs.at(-1).id:null});}
- if(action==='save'&&!id){const p=await requireStaff(req,['admin','atendente','mecanico']);const content=cleanChecklist(data);const ref=adminDb.collection('checklists').doc();await validateRelations(p.companyId,content);if(content.media.length)throw new Error('Salve antes de anexar arquivos.');const r={companyId:p.companyId,code:'CHK-'+ref.id.slice(0,8).toUpperCase(),version:1,revision:1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:content,createdAt:stamp(),updatedAt:stamp(),createdBy:p.uid};const b=adminDb.batch();b.set(ref,r);b.set(ref.collection('events').doc(),{at:stamp(),action:'Criação / início da vistoria',actor:p.uid});await b.commit();return res.status(200).json({id:ref.id,...r});}
+ if(action==='save'&&!id){const p=await requireStaff(req,['admin','atendente','mecanico']);const content=cleanChecklist(data);const ref=adminDb.collection('checklists').doc();await validateRelations(p.companyId,content);await validateResponsible(p.companyId,content);if(content.media.length)throw new Error('Salve antes de anexar arquivos.');const r={companyId:p.companyId,code:'CHK-'+ref.id.slice(0,8).toUpperCase(),version:1,revision:1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:content,createdAt:stamp(),updatedAt:stamp(),createdBy:p.uid};const b=adminDb.batch();b.set(ref,r);b.set(ref.collection('events').doc(),{at:stamp(),action:'Criação / início da vistoria',actor:p.uid});await b.commit();return res.status(200).json({id:ref.id,...r});}
  const c=await context(req,id,token);const actor=c.public?'Cliente por link':c.profile.uid;
  if(action==='get'){
  const history=c.public?[]:(await c.ref.collection('events').orderBy('at','asc').get()).docs.map(d=>d.data());
@@ -24,6 +24,8 @@ export default async function handler(req,res){
  if(c.public){const link=(await tx.get(c.linkRef)).data();if(!link)throw new Error('Link revogado');canRespond(r,link);}
  if(!c.public && revision!==r.revision)throw new Error('O registro foi alterado. Reabra antes de continuar.');
  let patch={},extra={};
+ if(action==='save')await validateResponsible(r.companyId,content,tx);
+ if(action==='finalize')await validateResponsible(r.companyId,{...r.data},tx);
  if(action==='save'){const oldIds=new Set(r.data.media.map(m=>m.id)),newIds=new Set(content.media.map(m=>m.id));for(const mediaId of newIds)if(!oldIds.has(mediaId))event(tx,c.ref,'Inclusão de mídia',actor,{mediaId,version:r.version});for(const mediaId of oldIds)if(!newIds.has(mediaId))event(tx,c.ref,'Remoção de mídia da versão em edição',actor,{mediaId,version:r.version});if(r.status!=='Em preenchimento')throw new Error('Crie uma nova versão para corrigir.');patch={data:content};}
  else if(action==='finalize'){if(r.status!=='Em preenchimento')throw new Error('Vistoria já finalizada');patch={status:'Finalizado',finalizedAt:stamp()};}
  else if(action==='new-version'){if(r.status==='Em preenchimento')throw new Error('A versão atual ainda está em edição');tx.set(c.ref.collection('versions').doc(String(r.version)),r);patch={version:r.version+1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:r.data};}
@@ -59,3 +61,11 @@ export default async function handler(req,res){
  }catch(e){return res.status(e.status||400).json({error:e.status===403?'Acesso negado':e.message||'Não foi possível concluir'});}
 }
 async function validateRelations(companyId,data){for(const [key,col] of [['customerId','customers'],['vehicleId','vehicles'],['quoteId','quotes'],['serviceOrderId','serviceOrders']]){if(!data[key])continue;if(!validId(data[key]))throw new Error('Referência inválida');const s=await adminDb.doc(col+'/'+data[key]).get();if(!s.exists||s.data().companyId!==companyId||s.data().deleted)throw new Error('Cadastro vinculado indisponível');if(key==='vehicleId'&&data.customerId&&s.data().customerId!==data.customerId)throw new Error('Veículo não pertence ao cliente selecionado');}}
+
+async function validateResponsible(companyId,data,tx){
+ if(!validId(data.responsibleId))throw new Error('Selecione um mecânico cadastrado como responsável.');
+ const ref=adminDb.doc('mechanics/'+data.responsibleId),snap=tx?await tx.get(ref):await ref.get();
+ const mechanic=snap.data();
+ if(!snap.exists||mechanic.companyId!==companyId||mechanic.deleted||mechanic.status!=='Ativo')throw new Error('Mecânico responsável indisponível. Selecione um mecânico ativo.');
+ data.responsible=mechanic.name;
+}

@@ -97,3 +97,11 @@ A área de fotos permite arrastar e soltar arquivos ou usar o botão **Escolher 
 A listagem e a leitura do Checklist passam pela camada de dados compartilhada do projeto (`listRecords` e `getRecord`). As chamadas de servidor e as mídias utilizam o mesmo serviço `api` usado em Orçamentos, preservando autenticação e respostas de erro. Os dados do Checklist continuam no Firestore e as mídias continuam em Base64.
 
 O registro e seu histórico são buscados juntos, sem uma segunda requisição de histórico ao abrir. As respostas de telas anteriores não atualizam o formulário aberto por **Continuar preenchimento**. As operações de versão, assinatura e link público permanecem validadas no servidor; não são necessárias novas regras ou migração para esta padronização.
+
+## Mecânicos e responsável pelo checklist
+
+Em **Administração → Mecânicos**, o administrador pode cadastrar, consultar, editar, desativar e excluir mecânicos. O cadastro contém nome, telefone, especialidade, status e observações.
+
+No Checklist, **Responsável (mecânico)** exige a seleção de um cadastro ativo da mesma empresa. Use **Atualizar mecânicos** para buscar os cadastros recém-criados sem apagar o formulário. O servidor valida o cadastro e registra seu identificador e nome. O nome salvo nos documentos antigos não é reescrito ao renomear, desativar ou excluir um mecânico. Rascunhos antigos precisam selecionar um mecânico antes de salvar ou finalizar.
+
+O CRUD utiliza os componentes e a camada de dados compartilhados do projeto. Esta implementação não exige índice novo, migração nem alteração de regras para o cadastro de mecânicos.

@@ -9,10 +9,12 @@ globalThis.__testAdmin={adminDb:db,FieldValue:{serverTimestamp:()=>new Date().to
 delete process.env.FIREBASE_STORAGE_BUCKET;
 const hook=registerHooks({resolve(specifier,context,next){if(specifier==='firebase-admin')throw new Error('Este teste não permite Firebase Storage');return next(specifier,context);},load(url,context,next){if(url.endsWith('/api/_firebase-admin.js'))return {format:'module',shortCircuit:true,source:'export const {adminDb,FieldValue,requireStaff,requireAdmin}=globalThis.__testAdmin;'};return next(url,context);}});
 const settings=(await import('../api/settings.js')).default;
+const mechanicsApi=(await import('../api/mechanics.js')).default;
 const media=(await import('../api/checklist-media.js')).default;
 const checklist=(await import('../api/checklists.js')).default;const quotes=(await import('../api/quotes.js')).default;
 async function call(handler,body,{auth=true,origin='http://localhost'}={}){let status=200,result;const req={method:'POST',headers:{host:'localhost',origin,'content-type':'application/json','content-length':String(JSON.stringify(body).length),...(auth?{authorization:'Bearer TEST'}:{})},body,socket:{remoteAddress:handler===quotes?'offline-quotes':handler===media?'offline-media':'offline-checklist'}};const res={setHeader(){},status(n){status=n;return this;},json(v){result=v;return this;},send(v){result=v;return this;}};await handler(req,res);return {status,result};}
-const base={customerName:'Cliente de teste',brand:'Marca',model:'Modelo',plate:'ABC1D23',entryDate:'2026-10-21T10:00',keys:1,mileage:100,fuelLevel:'0.5'};
+records.set('mechanics/mechanic1',{companyId:'test-company',name:'Mecânico de teste',status:'Ativo',deleted:false});
+const base={responsibleId:'mechanic1',responsible:'Nome adulterado',customerName:'Cliente de teste',brand:'Marca',model:'Modelo',plate:'ABC1D23',entryDate:'2026-10-21T10:00',keys:1,mileage:100,fuelLevel:'0.5'};
 let r,link,oldToken;
 test('API: nega acesso sem autenticação e origem diferente',async()=>{assert.equal((await call(checklist,{action:'list'},{auth:false})).status,401);assert.equal((await call(checklist,{action:'list'},{origin:'https://outro.test'})).status,400);});
 test('API: cria e retoma checklist real no armazenamento isolado',async()=>{const a=await call(checklist,{action:'save',data:base});assert.equal(a.status,200,a.result.error);r=a.result;const b=await call(checklist,{action:'get',id:r.id});assert.equal(b.result.data.plate,base.plate);assert.equal(b.result.confirmation.status,'Não enviado');});
@@ -68,6 +70,24 @@ test('API: Base64 em partes, sem bucket, preserva arquivo acima de 1 MB',async()
  assert.match((await call(media,{action:'read',id:saved.id,mediaId:a.result.id})).result.error,/integridade/);
  records.delete(chunkPath);assert.match((await call(media,{action:'read',id:saved.id,mediaId:a.result.id})).result.error,/incompleto/);
  assert.equal((await call(media,{action:'upload',id:saved.id,base64:Buffer.alloc(2500001).toString('base64')})).status,400);
+});
+
+
+test('API: CRUD de mecânicos restrito a admin e isolado por empresa',async()=>{
+ const created=await call(mechanicsApi,{action:'save',data:{name:'José da oficina',phone:'(61) 99999-0000',specialty:'Motor',status:'Ativo'}});assert.equal(created.status,200,created.result.error);const id=created.result.id;
+ const found=await call(mechanicsApi,{action:'list',pageSize:1});assert.equal(found.status,200);assert.equal(found.result.records.length,1);assert.equal(found.result.hasMore,true);const next=await call(mechanicsApi,{action:'list',after:found.result.cursor,pageSize:1});assert.equal(next.result.records.length,1);
+ assert.equal((await call(mechanicsApi,{action:'count'})).result.count,2);
+ assert.equal((await call(mechanicsApi,{action:'save',id,data:{name:'José atualizado',status:'Inativo'}})).status,200);assert.equal((await call(mechanicsApi,{action:'get',id})).result.name,'José atualizado');
+ staff.role='atendente';assert.equal((await call(mechanicsApi,{action:'list',activeOnly:true})).result.records.length,1);assert.equal((await call(mechanicsApi,{action:'save',data:{name:'Sem permissão',status:'Ativo'}})).status,403);staff.role='admin';
+ staff.companyId='other';assert.equal((await call(mechanicsApi,{action:'get',id})).status,403);assert.equal((await call(mechanicsApi,{action:'delete',id})).status,403);staff.companyId='test-company';
+ assert.equal((await call(mechanicsApi,{action:'delete',id})).status,200);assert.equal((await call(mechanicsApi,{action:'count'})).result.count,1);assert.equal(records.get('mechanics/'+id).deleted,true);
+});
+test('API: responsável é mecânico ativo, nome canônico e histórico preservado',async()=>{
+ const saved=await call(checklist,{action:'save',data:base});assert.equal(saved.status,200,saved.result.error);assert.equal(saved.result.data.responsible,'Mecânico de teste');
+ assert.equal((await call(checklist,{action:'save',data:{...base,responsibleId:''}})).status,400);
+ for(const [id,companyId,status,deleted]of [['inactive','test-company','Inativo',false],['foreign','other','Ativo',false],['removed','test-company','Ativo',true]]){records.set('mechanics/'+id,{name:'Inválido',companyId,status,deleted});assert.equal((await call(checklist,{action:'save',data:{...base,responsibleId:id}})).status,400);}
+ const before=records.get('mechanics/mechanic1');records.set('mechanics/mechanic1',{...before,status:'Inativo'});assert.equal((await call(checklist,{action:'finalize',id:saved.result.id,revision:saved.result.revision})).status,400);records.set('mechanics/mechanic1',before);
+ const legacy={...records.get('checklists/'+saved.result.id),status:'Finalizado',data:{...saved.result.data,responsible:'Responsável antigo'}};delete legacy.data.responsibleId;records.set('checklists/legacy',legacy);assert.equal((await call(checklist,{action:'get',id:'legacy'})).result.data.responsible,'Responsável antigo');
 });
 
 test.after(()=>hook.deregister());
