@@ -3,6 +3,7 @@ import { installInputMasks } from './utils/masks.js';
 installInputMasks();
 
 const routes = {
+  fila: ['Gerenciar Fila', './modules/fila/page.js'],
   mecanicos: ['Mecânicos', './modules/mecanicos/page.js'],
   checklist: ['Checklist', './modules/checklist/page.js'],
   dashboard: ['Dashboard', './modules/dashboard/page.js'],
@@ -46,6 +47,7 @@ export function routeHref(name, query = '') {
 }
 
 async function loadRoute() {
+  window.dispatchEvent(new Event('gac:routechange'));
   const id = ++navigationId;
   const route = currentRoute();
   const [title, modulePath] = routes[route.name];

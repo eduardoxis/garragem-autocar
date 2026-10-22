@@ -2,7 +2,7 @@ import { getIcon } from './icons.js';
 
 const adminItems = [
   ['dashboard','Dashboard','#dashboard'], ['users','Clientes','#clientes'], ['car','Veículos','#veiculos'],
-  ['check','Checklist','#checklist'], ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
+  ['check','Checklist','#checklist'], ['car','Gerenciar Fila','#fila'], ['file','Orçamentos','#orcamentos'], ['file','Ordens de Serviço','#ordens-servico'], ['wrench','Oficina','#oficina'],
   ['calendar','Agenda','#agenda'], ['box','Estoque','#estoque'], ['truck','Fornecedores','#fornecedores'],
   ['money','Financeiro','#financeiro'], ['settings','Administração','#administracao']
 ];
@@ -10,7 +10,7 @@ const userItems = [['users','Clientes','#clientes'],['file','Orçamentos','#orca
 const routeName = url => url.replace(/^#/,'').split('?')[0];
 
 export function createSidebar(profile, active) {
-  const items = profile.role === 'admin' ? adminItems : ['atendente','mecanico'].includes(profile.role) ? [...userItems,['check','Checklist','#checklist']] : userItems;
+  const items = profile.role === 'admin' ? adminItems : profile.role==='mecanico' ? [['car','Gerenciar Fila','#fila'],['check','Checklist','#checklist'],['settings','Perfil','#perfil']] : profile.role==='atendente' ? [...userItems,['check','Checklist','#checklist']] : userItems;
   return `<aside class="sidebar">
     <a class="sidebar-brand" href="${profile.role === 'admin' ? '#dashboard' : '#clientes'}"><img class="brand-logo" src="assets/garagem-auto-car-logo.png" alt="Garagem Auto Car"><span><strong>GARAGEM AUTO CAR</strong><small>GESTÃO DE OFICINA</small></span></a>
     <nav class="sidebar-nav" aria-label="Menu principal">${items.map(([icon,label,url]) => `<a class="nav-link ${active === routeName(url) ? 'active' : ''}" href="${url}">${getIcon(icon)}<span>${label}</span></a>`).join('')}</nav>
@@ -21,6 +21,6 @@ export function createSidebar(profile, active) {
 export function createMobileNav(profile, active) {
   const items = profile.role === 'admin'
     ? [['dashboard','Início','#dashboard'],['wrench','Oficina','#oficina'],['plus','Novo','#orcamentos?action=new'],['users','Clientes','#clientes'],['more','Mais','#administracao']]
-    : [['users','Clientes','#clientes'],['file','Orçamentos','#orcamentos'],['settings','Perfil','#perfil'],['logout','Sair','#logout']];
+    : profile.role==='mecanico' ? [['car','Fila','#fila'],['check','Checklist','#checklist'],['settings','Perfil','#perfil'],['logout','Sair','#logout']] : [['users','Clientes','#clientes'],['file','Orçamentos','#orcamentos'],['settings','Perfil','#perfil'],['logout','Sair','#logout']];
   return `<nav class="mobile-nav" aria-label="Menu mobile">${items.map(([icon,label,url],index) => `<a class="${active === routeName(url) ? 'active' : ''} ${index === 2 && profile.role === 'admin' ? 'mobile-create' : ''}" href="${url}" ${url === '#logout' ? 'data-action="logout"' : ''}>${getIcon(icon,19)}<span>${label}</span></a>`).join('')}</nav>`;
 }

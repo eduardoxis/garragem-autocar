@@ -34,11 +34,17 @@ export default async function handler(req,res){
   if(action==='save'){
    const name=String(data.name||'').trim();if(name.length<2||name.length>120)throw new Error('Informe o nome do mecânico, entre 2 e 120 caracteres.');
    if(!['Ativo','Inativo'].includes(data.status))throw new Error('Status inválido');
-   safe={name,phone:String(data.phone||'').replace(/\D/g,'').slice(0,20),specialty:String(data.specialty||'').trim().slice(0,120),notes:String(data.notes||'').trim().slice(0,2000),status:data.status};
+   safe={name,userId:String(data.userId||'').trim(),phone:String(data.phone||'').replace(/\D/g,'').slice(0,20),specialty:String(data.specialty||'').trim().slice(0,120),notes:String(data.notes||'').trim().slice(0,2000),status:data.status};
   }
   await adminDb.runTransaction(async tx=>{
    const previous=await tx.get(ref);
    if(id&&(!previous.exists||previous.data().companyId!==profile.companyId||previous.data().deleted))throw Object.assign(new Error('Mecânico indisponível'),{status:403});
+   const previousUserId=previous.data()?.userId||'';let previousUserRef=null;let previousUser=null;
+   if(previousUserId&&(action==='delete'||previousUserId!==safe?.userId)){previousUserRef=adminDb.doc('users/'+previousUserId);previousUser=(await tx.get(previousUserRef)).data();}
+   let userRef=null;
+   if(action==='save'&&safe.userId){if(!validId(safe.userId))throw new Error('Usuário inválido');userRef=adminDb.doc('users/'+safe.userId);const user=(await tx.get(userRef)).data();if(!user||user.companyId!==profile.companyId||user.deleted||!user.active||user.role!=='mecanico')throw new Error('Selecione um usuário ativo com perfil Mecânico da mesma empresa.');if(user.mechanicId&&user.mechanicId!==ref.id){const assigned=(await tx.get(adminDb.doc('mechanics/'+user.mechanicId))).data();if(assigned&&!assigned.deleted)throw new Error('Este usuário já está vinculado a outro mecânico.');}}
+   if(previousUserRef&&previousUser?.mechanicId===ref.id)tx.update(previousUserRef,{mechanicId:null});
+   if(userRef)tx.update(userRef,{mechanicId:ref.id});
    if(action==='delete')tx.update(ref,{deleted:true,deletedBy:profile.uid,deletedAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
    else tx.set(ref,{...safe,companyId:profile.companyId,deleted:false,updatedAt:FieldValue.serverTimestamp(),...(!id?{createdAt:FieldValue.serverTimestamp(),createdBy:profile.uid}:{})},{merge:Boolean(id)});
   });

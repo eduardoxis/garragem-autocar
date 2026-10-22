@@ -11,7 +11,7 @@ export default async function handler(req,res){
     const {name,email,password,role,companyId}=req.body||{};
     const safeName=String(name||'').trim().slice(0,120);
     const safeEmail=String(email||'').trim().toLowerCase().slice(0,254);
-    if(!safeName||!/^\S+@\S+\.\S+$/.test(safeEmail)||String(password||'').length<8||String(password||'').length>128||!['admin','user'].includes(role)||companyId!==current.companyId)return res.status(400).json({error:'Dados inválidos'});
+    if(!safeName||!/^\S+@\S+\.\S+$/.test(safeEmail)||String(password||'').length<8||String(password||'').length>128||!['admin','user','mecanico'].includes(role)||companyId!==current.companyId)return res.status(400).json({error:'Dados inválidos'});
     const created=await adminAuth.createUser({displayName:safeName,email:safeEmail,password});
     await adminDb.doc(`users/${created.uid}`).set({name:safeName,email:safeEmail,role,active:true,companyId,deleted:false,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
     return res.status(201).json({uid:created.uid});

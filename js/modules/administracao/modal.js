@@ -73,7 +73,7 @@ export async function openAdminPanel() {
   };
   newUser.addEventListener('click',()=>{
     const form=document.createElement('form'); form.className='form-grid';
-    form.innerHTML='<div class="field"><label>Nome</label><input class="input" name="name" maxlength="120" required></div><div class="field"><label>E-mail</label><input class="input" name="email" type="email" maxlength="254" required></div><div class="field"><label>Senha temporária</label><input class="input" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div><div class="field"><label>Perfil</label><select class="select" name="role"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div><p class="form-error full" role="alert" hidden></p>';
+    form.innerHTML='<div class="field"><label>Nome</label><input class="input" name="name" maxlength="120" required></div><div class="field"><label>E-mail</label><input class="input" name="email" type="email" maxlength="254" required></div><div class="field"><label>Senha temporária</label><input class="input" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></div><div class="field"><label>Perfil</label><select class="select" name="role"><option value="user">Usuário</option><option value="mecanico">Mecânico</option><option value="admin">Administrador</option></select></div><p class="form-error full" role="alert" hidden></p>';
     createModal({title:'Novo usuário autorizado',content:form,confirmText:'Criar usuário',onConfirm:async()=>{
       if(!form.reportValidity())return false;
       const errorElement=form.querySelector('.form-error');
