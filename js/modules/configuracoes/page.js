@@ -1,3 +1,4 @@
+import {mountWorkshopHours} from '../../components/workshop-hours.js';
 import { discountAmount, cents } from '../../utils/discounts.js';
 import { currency } from '../../utils/currency.js';
 import { api } from '../../services/api.js';
@@ -25,6 +26,7 @@ if (profile) {
     const input = page.querySelector(`[name="${key}"]`);
     if (input) input.value = value ?? '';
   });
+  mountWorkshopHours(page,snap.exists()?snap.data().workshopSchedule:undefined);
   preview();
   const form = page.querySelector('#settings');
   applyInputMasks(form);

@@ -187,3 +187,20 @@ test('Checklist: paginação atravessa uma página inteira de registros excluíd
 });
 
 test.after(()=>hook.deregister());
+
+test('Oficina: expediente tem validação, isolamento e não modifica atendimentos ou boxes',async()=>{
+ const {defaultWorkshopSchedule}=await import('../js/utils/workshop-hours.js');const snapshot=structuredClone([...records.entries()].filter(([k])=>k.startsWith('queueEntries/')||k.startsWith('queueBoxLocks/')));
+ const data={workshopSchedule:{...defaultWorkshopSchedule(),holidays:[{date:'2026-10-26',name:'Feriado'}]}};
+ assert.equal((await call(settings,{action:'workshop-hours',data},{auth:false,address:'hours'})).status,403);
+ assert.equal((await call(settings,{action:'workshop-hours',data:{workshopSchedule:{}}},{address:'hours'})).status,400);
+ const r=await call(settings,{action:'workshop-hours',data},{address:'hours'});assert.equal(r.status,200,r.result.error);assert.equal(records.get('companies/test-company').workshopSchedule.holidays[0].name,'Feriado');assert.deepEqual([...records.entries()].filter(([k])=>k.startsWith('queueEntries/')||k.startsWith('queueBoxLocks/')),snapshot);
+});
+test('Oficina: TVs têm cookies, autorizações e revogação separados da recepção',async()=>{
+ const r=await call(tvApi,{action:'start',panel:'workshop'},{auth:false,address:'workshop-tv'});assert.equal(r.status,200);assert.match(r.headers['Set-Cookie'],/^gac_workshop_tv=/);const cookie=r.headers['Set-Cookie'].split(';')[0];
+ assert.equal((await call(tvApi,{action:'authorize',code:r.result.code},{address:'workshop-tv'})).status,400);
+ assert.equal((await call(tvApi,{action:'authorize',panel:'workshop',code:r.result.code},{address:'workshop-tv'})).status,200);
+ assert.equal((await call(tvApi,{action:'start',panel:'workshop'},{auth:false,cookie,address:'workshop-tv'})).result.authorized,true);
+ assert.equal((await call(tvApi,{action:'start'},{auth:false,cookie,address:'workshop-tv'})).result.authorized,false);
+ const list=await call(tvApi,{action:'list',panel:'workshop'},{address:'workshop-tv'});assert.equal(list.result.sessions.length,1);const id=list.result.sessions[0].id;
+ assert.equal((await call(tvApi,{action:'revoke',id},{address:'workshop-tv'})).status,403);assert.equal((await call(tvApi,{action:'revoke',panel:'workshop',id},{address:'workshop-tv'})).status,200);
+});

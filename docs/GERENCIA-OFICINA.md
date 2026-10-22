@@ -1,30 +1,40 @@
 # Gerência Oficina
 
-Acesse **Gerência Oficina** no menu lateral. O administrador acompanha todos os mecânicos; cada login de mecânico continua vendo somente os serviços atribuídos ao seu cadastro vinculado, conforme as permissões já existentes.
+## Administração
 
-O painel usa os mesmos atendimentos de **Gerenciar Fila**, sem duplicar clientes, veículos, mecânicos ou filas. Mudanças de status, responsável, placa, serviço, previsão e box chegam automaticamente às visualizações aplicáveis. O botão **Gerenciar Fila** abre os controles administrativos existentes.
+Gerência Oficina e Gerenciar Fila compartilham `js/modules/fila/management.js`: mesmos atendimentos, ações, formulários, filtros e permissões. A Gerência usa Inter e acrescenta data inicial/final, botão Hoje e informações do expediente. O administrador pode adicionar, editar, reordenar, finalizar, remover e consultar histórico; cada login de mecânico continua restrito aos seus serviços, com alteração de status e observações. Registros encerrados ficam disponíveis para consulta, com alterações desabilitadas.
 
-## Organização diária
+Os quatro botões administrativos são Exibir na TV, Autorizar TV, TVs autorizadas e Adicionar à fila.
 
-- Ao adicionar ou editar um atendimento na fila, informe **Dia do serviço**. A previsão de conclusão continua sendo uma data e hora independente.
-- Registros antigos usam o dia da previsão; não precisam de migração.
-- O painel abre no dia atual, no fuso `America/Sao_Paulo`. O administrador pode consultar datas anteriores e futuras.
-- Pendências ativas de dias anteriores continuam visíveis no dia atual, com aviso. A mudança de data não altera nenhum status.
-- Atendimentos finalizados permanecem na consulta do seu dia, sem controles de edição. Atendimentos removidos não aparecem. O histórico existente é preservado.
-- Cadastros ativos aparecem mesmo sem serviços. Se um profissional for desativado e ainda possuir registros no dia consultado, sua coluna permanece identificada como inativa, para não esconder serviços ou histórico.
+## TV dos mecânicos
 
-## Painel em tela cheia
+Use Exibir na TV na Gerência ou abra `/oficina/tv`. Informe o código exibido em Autorizar TV, na própria Gerência. A autorização dura até 12 horas e pode ser revogada em TVs autorizadas.
 
-Use **Tela cheia** para exibir somente o painel, com logo, relógio, data, colunas e legenda. O painel segue sempre o dia atual e acompanha a virada da meia-noite. Saia com ESC ou com **Sair**, no canto superior direito, revelado ao passar o mouse ou receber foco. Ao sair, a consulta administrativa anterior é restaurada.
+O documento independente mantém logo, título, indicação Mecânicos, relógio/data em São Paulo, colunas por profissional e legenda. Tela cheia oculta a interface administrativa. São exibidos até cinco profissionais e cinco serviços por coluna; o excedente alterna a cada 15 segundos, com indicadores. Cadastros ativos aparecem mesmo sem serviços. Profissionais inativos com atendimentos no período permanecem identificados.
 
-As colunas seguem os mecânicos cadastrados. Para manter a leitura, cada coluna mostra até cinco serviços por vez, alternando automaticamente a cada 15 segundos quando houver mais registros. Mais de cinco profissionais são distribuídos em grupos alternados. Contadores e indicadores de página mostram o total. No celular e na área administrativa, as colunas se reorganizam conforme o espaço disponível.
+A TV tem sessão somente de leitura e funciona sem manter o administrador conectado. Não recebe clientes, valores ou observações internas. O cookie `gac_workshop_tv` é separado de `gac_queue_tv`, usado na recepção. Código, lista de autorizações e revogação são separados por painel; uma autorização não libera a outra TV.
 
-## Sincronização e segurança
+## Continuidade
 
-O fluxo SSE autenticado existente recebe `view: "workshop"` e `day`, observando `queueEntries` e o cadastro de mecânicos da mesma empresa. A reconexão recebe uma nova fotografia completa. Os vínculos e permissões continuam sendo validados e revogados em tempo real. A projeção da oficina não contém clientes, valores ou observações internas.
+A coleção única continua sendo `queueEntries`. A passagem do tempo não cria registros, não muda previsão, responsável ou status.
 
-Os controles de status usam a mesma API transacional, a revisão do atendimento e as regras de boxes. Concluir ou retirar o veículo libera o box. Atribuição de box e edição dos demais campos continuam restritas ao administrador em **Gerenciar Fila**. A TV da recepção conserva sua autorização de leitura e seu layout.
+- Aguardando e Em serviço continuam ativos nos dias seguintes, com a data original.
+- Pendências anteriores se juntam aos serviços atuais com o aviso Pendente de DD/MM/AAAA.
+- A posição da fila é preservada, inclusive a ordenação manual. Atendimentos antigos normalmente possuem posições anteriores.
+- Marcar um serviço antigo como Pronto registra `readyAt`, retira o aviso de pendência e mantém o resultado visível no dia da conclusão. A recepção exibe o veículo até o encerramento administrativo.
+- Finalizar preserva o histórico; Remover retira o atendimento das visualizações aplicáveis.
+- O box permanece ocupado enquanto o veículo estiver ativo e Em serviço. Meia-noite e fechamento do expediente não o liberam. Pronto, finalização e remoção usam as transações existentes para liberá-lo.
 
-## Validação local
+A consulta administrativa abre em Hoje. Na virada do dia, esse período avança automaticamente; períodos históricos explícitos são mantidos. O histórico por data mostra o estado atual registrado dos atendimentos daquele período, sem simular estados antigos.
 
-`node tests/run.js` e `node tests/check-syntax.js` verificam regras e sintaxe. `tests/workshop.browser.test.mjs` usa os manipuladores reais e SSE com um banco isolado, sem credenciais nem dados de clientes. Exercita as três telas, transferência, liberação de box, histórico diário, permissões, cadastro dinâmico, reconexão, tela cheia, celular e virada do dia. Requer Playwright e Chrome; `PLAYWRIGHT_PATH` pode apontar para a instalação local.
+## Expediente e feriados
+
+Em Administração → Configurações da empresa, use Expediente da oficina. Configure os sete dias, horários de abertura/fechamento e datas sem expediente. Os horários sugeridos precisam ser ajustados e salvos; nada é gravado automaticamente.
+
+A configuração fica em `companies/{empresa}.workshopSchedule`; somente o administrador pode salvá-la. O servidor valida horários, datas, duplicidades e limites. Os painéis recebem as alterações em tempo real. Em domingos, feriados e demais dias fechados, as pendências continuam visíveis, com informação do próximo expediente. Os atendimentos não são movidos para outra data nem alterados. Se todos os dias forem fechados, o painel informa que não há próximo expediente configurado.
+
+## Sincronização e validação
+
+O SSE existente observa a mesma fila. A Gerência administrativa usa `view: workshop-admin`; a TV usa `GET /api/queue-stream?view=workshop` com seu cookie. Empresa, sessão, perfil e vínculo continuam validados. A reconexão recebe uma fotografia completa. Cadastro de mecânicos e expediente também são observados.
+
+Execute `node tests/run.js` e `node tests/check-syntax.js`. Os testes de navegador `tests/queue.browser.test.mjs` e `tests/workshop.browser.test.mjs` usam manipuladores reais com banco isolado: quatro telas, permissões, filtros, transferência, histórico, continuidade, boxes, expediente, feriados, autorização de TVs, reconexão, revogação, tela cheia e celular. Não acessam clientes ou credenciais de produção.

@@ -6,8 +6,13 @@ export function workshopDay(value=new Date()){
 }
 export function validWorkshopDay(day){return /^\d{4}-\d{2}-\d{2}$/.test(day)&&!Number.isNaN(Date.parse(day))&&new Date(day).toISOString().slice(0,10)===day;}
 export function serviceDay(record){return record.scheduledDate||record.forecastDate?.slice(0,10)||(record.enteredAt?workshopDay(record.enteredAt):'');}
+export const pendingWorkshopService=r=>r.active&&!r.removed&&['Aguardando','Em serviço'].includes(r.status);
+export function completionDay(r){const at=r.readyAt||r.closedAt||r.updatedAt;return r.status==='Pronto'&&at?workshopDay(at):'';}
+export function workshopInPeriod(r,from,to,today=workshopDay()){
+ const original=serviceDay(r);return !r.removed&&((original>=from&&original<=to)||(completionDay(r)>=from&&completionDay(r)<=to)||(from<=today&&to>=today&&pendingWorkshopService(r)&&original&&original<today));
+}
 export function workshopRecords(records,day,today=workshopDay()){
- return records.filter(r=>!r.removed&&(serviceDay(r)===day||(day===today&&r.active&&r.status!=='Pronto'&&serviceDay(r)<today)))
+ return records.filter(r=>workshopInPeriod(r,day,day,today))
   .sort(queueOrder).map(r=>({id:r.id,revision:r.revision,vehicle:r.vehicle,plate:r.plate,service:r.service,mechanicId:r.mechanicId,mechanicName:r.mechanicName,status:r.status,forecastDate:r.forecastDate,scheduledDate:serviceDay(r),position:r.position,active:r.active,box:r.active&&r.status==='Em serviço'?r.box||'':'',overdue:r.active&&r.status!=='Pronto'&&serviceDay(r)<today}));
 }
 export function workshopGroups(mechanics,records){

@@ -20,6 +20,7 @@ export const queueRecords=snapshot=>snapshot.docs.map(doc=>({id:doc.id,...doc.da
 export const tvRecords=snapshot=>queueRecords(snapshot).map(publicQueueItem);
 export function writeQueue(tx,ref,record,old,profile,action){
  const at=now();const next={...record,updatedAt:at,updatedBy:profile.uid,revision:(old?.revision||0)+1};
+ if(next.status==='Pronto'&&old?.status!=='Pronto')next.readyAt=at;else if(next.status!=='Pronto')next.readyAt=null;
  tx.set(ref,next);
  const display=adminDb.doc('queueDisplayEntries/'+ref.id);
  if(next.active&&!next.removed)tx.set(display,{...publicQueueItem({id:ref.id,...next}),companyId:next.companyId});else tx.delete(display);
@@ -27,5 +28,7 @@ export function writeQueue(tx,ref,record,old,profile,action){
  tx.set(ref.collection('history').doc(),event);tx.set(adminDb.collection('queueAudit').doc(),event);
  return {id:ref.id,...next};
 }
-export function queueCookie(req){const match=String(req.headers.cookie||'').match(/(?:^|;\s*)gac_queue_tv=([a-f0-9]{64})(?:;|$)/);return match?.[1]||null;}
-export async function tvSession(req){const token=queueCookie(req);if(!token)throw fail('TV não autorizada.',401);const ref=adminDb.doc('queueTvSessions/'+hash(token));const record=(await ref.get()).data();if(!record||record.revoked||Date.parse(record.expiresAt)<=Date.now()||record.agentHash!==hash(req.headers['user-agent']||''))throw fail('Autorização da TV expirada ou revogada.',401);return {ref,record};}
+export const tvPanel=req=>req.method==='GET'?(new URL(req.url||'/', 'http://localhost').searchParams.get('view')==='workshop'?'workshop':'reception'):(req.body?.panel==='workshop'?'workshop':'reception');
+export const tvCookieName=panel=>panel==='workshop'?'gac_workshop_tv':'gac_queue_tv';
+export function queueCookie(req,panel=tvPanel(req)){const match=String(req.headers.cookie||'').match(new RegExp('(?:^|;\\s*)'+tvCookieName(panel)+'=([a-f0-9]{64})(?:;|$)'));return match?.[1]||null;}
+export async function tvSession(req){const token=queueCookie(req);if(!token)throw fail('TV não autorizada.',401);const ref=adminDb.doc('queueTvSessions/'+hash(token));const record=(await ref.get()).data();if(!record||record.revoked||Date.parse(record.expiresAt)<=Date.now()||record.agentHash!==hash(req.headers['user-agent']||'')||(record.panel||'reception')!==tvPanel(req))throw fail('Autorização da TV expirada ou revogada.',401);return {ref,record};}
