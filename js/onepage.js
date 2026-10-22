@@ -5,6 +5,7 @@ import { installInputMasks } from './utils/masks.js';
 installInputMasks();
 
 const routes = {
+  'gerencia-oficina': ['Gerência Oficina', './modules/gerencia-oficina/page.js'],
   fila: ['Gerenciar Fila', './modules/fila/page.js'],
   mecanicos: ['Mecânicos', './modules/mecanicos/page.js'],
   checklist: ['Checklist', './modules/checklist/page.js'],

@@ -1,3 +1,4 @@
+import {validWorkshopDay} from '../js/utils/workshop.js';
 import {cleanBox,prepareBox} from './_queue-box.js';
 import {adminDb} from './_firebase-admin.js';
 import {validId} from './_checklist.js';
@@ -20,7 +21,8 @@ async function input(tx,profile,data,old){
  if(!service||service.length>80)throw fail('Informe o serviço com até 80 caracteres');
  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(forecastDate)||Number.isNaN(Date.parse(forecastDate)))throw fail('Informe a previsão de conclusão');
  if(!queueStatuses.includes(data.status||old?.status||'Aguardando'))throw fail('Status inválido');
- return {box:cleanBox(data.box??old?.box??''),vehicleId,serviceOrderId:data.serviceOrderId||'',serviceOrderCode:order?.code||'',vehicle:vehicleName,plate:vehiclePlate,service,mechanicId:data.mechanicId,mechanicName:mechanic.name,status:data.status||old?.status||'Aguardando',forecastDate,internalNotes:String(data.internalNotes||'').slice(0,2000)};
+ const scheduledDate=String(data.scheduledDate||old?.scheduledDate||forecastDate.slice(0,10));if(!validWorkshopDay(scheduledDate))throw fail('Informe o dia do serviço');
+ return {scheduledDate,box:cleanBox(data.box??old?.box??''),vehicleId,serviceOrderId:data.serviceOrderId||'',serviceOrderCode:order?.code||'',vehicle:vehicleName,plate:vehiclePlate,service,mechanicId:data.mechanicId,mechanicName:mechanic.name,status:data.status||old?.status||'Aguardando',forecastDate,internalNotes:String(data.internalNotes||'').slice(0,2000)};
 }
 export default async function handler(req,res){secureResponse(res);
  if(req.method!=='POST'||!allowSameOrigin(req)||!validJsonRequest(req,32768)||!rateLimit(req,{limit:120}))return res.status(400).json({error:'Solicitação inválida'});
