@@ -137,6 +137,9 @@
   "functions": {
     "api/queue-stream.js": {
       "maxDuration": 60
+    },
+    "api/checklist-stream.js": {
+      "maxDuration": 60
     }
   }
 }

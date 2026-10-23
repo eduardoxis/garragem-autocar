@@ -1,3 +1,5 @@
+import {linkVehicleCustomer} from './_vehicle-customer.js';
+import {manageEditLease,assertEditLease,newEditLease,editRef} from './_checklist-edit.js';
 import { randomBytes } from 'node:crypto';
 import { adminDb, requireStaff } from './_firebase-admin.js';
 import { allowSameOrigin, secureResponse, validJsonRequest, rateLimit } from './_security.js';
@@ -9,8 +11,10 @@ export default async function handler(req,res){
  secureResponse(res);if(req.method!=='POST')return res.status(405).json({error:'Método não permitido'});
  if(!allowSameOrigin(req)||!validJsonRequest(req,350000)||!rateLimit(req,{limit:80}))return res.status(400).json({error:'Solicitação inválida'});
  try{const {action,id,data,token,revision,method,version}=req.body||{};
+ if(action==='link-vehicle')return res.status(200).json(await linkVehicleCustomer(req));
  if(action==='list'){const p=await requireStaff(req,['admin','atendente','mecanico']);const pageSize=Math.min(100,Math.max(1,Math.floor(Number(req.body.pageSize)||25)));let query=adminDb.collection('checklists').where('companyId','==',p.companyId).orderBy('createdAt','desc').limit(pageSize);if(req.body.after){if(!validId(req.body.after))throw new Error('Página inválida');const cursor=await adminDb.doc('checklists/'+req.body.after).get();if(!cursor.exists||cursor.data().companyId!==p.companyId)throw new Error('Página inválida');query=query.startAfter(cursor);}const q=await query.get();return res.status(200).json({records:q.docs.filter(d=>!d.data().deleted).map(d=>({id:d.id,...d.data()})),nextCursor:q.size===pageSize?q.docs.at(-1).id:null});}
- if(action==='save'&&!id){const p=await requireStaff(req,['admin','atendente','mecanico']);const content=cleanChecklist(data);const ref=adminDb.collection('checklists').doc();await validateRelations(p.companyId,content);await validateResponsible(p.companyId,content);if(content.media.length)throw new Error('Salve antes de anexar arquivos.');const r={companyId:p.companyId,code:'CHK-'+ref.id.slice(0,8).toUpperCase(),version:1,revision:1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:content,createdAt:stamp(),updatedAt:stamp(),createdBy:p.uid};const b=adminDb.batch();b.set(ref,r);b.set(ref.collection('events').doc(),{at:stamp(),action:'Criação / início da vistoria',actor:p.uid});await b.commit();return res.status(200).json({id:ref.id,...r});}
+ if(action==='save'&&!id){const p=await requireStaff(req,['admin','atendente','mecanico']);const content=cleanChecklist(data);const ref=adminDb.collection('checklists').doc();await validateRelations(p.companyId,content);await validateResponsible(p.companyId,content);if(content.media.length)throw new Error('Salve antes de anexar arquivos.');const r={companyId:p.companyId,code:'CHK-'+ref.id.slice(0,8).toUpperCase(),version:1,revision:1,status:'Em preenchimento',confirmation:{status:'Não enviado'},data:content,createdAt:stamp(),updatedAt:stamp(),createdBy:p.uid};const lease=newEditLease(p,req.body.editSession);const b=adminDb.batch();b.set(editRef(ref.id),lease);b.set(ref,r);b.set(ref.collection('events').doc(),{at:stamp(),action:'Criação / início da vistoria',actor:p.uid});await b.commit();return res.status(200).json({id:ref.id,...r});}
+ if(['acquire-edit','renew-edit','release-edit'].includes(action)){const profile=await requireStaff(req,['admin','atendente','mecanico']);if(!validId(id))throw new Error('Identificador inválido.');return res.status(200).json(await manageEditLease({profile,ref:adminDb.doc('checklists/'+id),public:false},action,req.body.editSession));}
  const c=await context(req,id,token);const actor=c.public?'Cliente por link':c.profile.uid;
  if(action==='delete'&&(c.public||c.profile.role!=='admin'))throw Object.assign(new Error('Somente o administrador pode excluir checklists.'),{status:403});
  if(action==='get'){
@@ -24,6 +28,8 @@ export default async function handler(req,res){
  const snap=await tx.get(c.ref),r=snap.data();if(!r||r.deleted)throw new Error('Registro indisponível');
  if(c.public){const link=(await tx.get(c.linkRef)).data();if(!link)throw new Error('Link revogado');canRespond(r,link);}
  if(!c.public && revision!==r.revision)throw new Error('O registro foi alterado. Reabra antes de continuar.');
+ if(action==='save'&&r.status!=='Em preenchimento')throw new Error('Crie uma nova versão para corrigir.');
+ if(!c.public&&action!=='pdf')await assertEditLease(tx,c.ref.id,c.profile,req.body.editSession,{required:action==='save'});
  let patch={},extra={};
  if(action==='save')await validateResponsible(r.companyId,content,tx);
  if(action==='finalize')await validateResponsible(r.companyId,{...r.data},tx);
@@ -57,6 +63,7 @@ export default async function handler(req,res){
  else throw new Error('Ação inválida');
  if(['confirm','sign','whatsapp-confirm'].includes(action)){tx.set(c.ref.collection('versions').doc(String(r.version)),{...r,...patch});}
  if(action==='new-version'&&!String(data?.resolution||'').trim())throw new Error('Registre o motivo da correção/providência adotada.');
+ if(['finalize','cancel','delete','new-version'].includes(action))tx.delete(editRef(c.ref.id));
  patch.updatedAt=stamp();patch.revision=r.revision+1;tx.update(c.ref,patch);event(tx,c.ref,action,actor,{version:r.version,details:action==='new-version'?String(data.resolution).slice(0,4000):action==='review'?String(data.description).slice(0,4000):'',method:method||''});
  return {id:c.ref.id,...r,...patch,...extra};
  });return res.status(200).json(result);

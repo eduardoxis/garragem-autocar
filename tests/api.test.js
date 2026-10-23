@@ -14,7 +14,7 @@ const settings=(await import('../api/settings.js')).default;
 const mechanicsApi=(await import('../api/mechanics.js')).default;
 const media=(await import('../api/checklist-media.js')).default;
 const checklist=(await import('../api/checklists.js')).default;const quotes=(await import('../api/quotes.js')).default;
-async function call(handler,body,{auth=true,origin='http://localhost',cookie='',agent='TEST-DEVICE',address}={}){let status=200,result;const headers={};const req={url:handler===queueApi?'/api/queue':handler===tvApi?'/api/queue-tv':'/api/other',method:'POST',headers:{host:'localhost',origin,cookie,'user-agent':agent,'content-type':'application/json','content-length':String(JSON.stringify(body).length),...(auth?{authorization:'Bearer TEST'}:{})},body,socket:{remoteAddress:address|| (handler===quotes?'offline-quotes':handler===media?'offline-media':'offline-checklist')}};const res={setHeader(k,v){headers[k]=v;},status(n){status=n;return this;},json(v){result=v;return this;},send(v){result=v;return this;}};await handler(req,res);return {status,result,headers};}
+async function call(handler,body,{auth=true,origin='http://localhost',cookie='',agent='TEST-DEVICE',address}={}){if(auth&&(handler===checklist||handler===media))body={editSession:'offline-browser-session',...body};let status=200,result;const headers={};const req={url:handler===queueApi?'/api/queue':handler===tvApi?'/api/queue-tv':'/api/other',method:'POST',headers:{host:'localhost',origin,cookie,'user-agent':agent,'content-type':'application/json','content-length':String(JSON.stringify(body).length),...(auth?{authorization:'Bearer TEST'}:{})},body,socket:{remoteAddress:address|| (handler===quotes?'offline-quotes':handler===media?'offline-media':'offline-checklist')}};const res={setHeader(k,v){headers[k]=v;},status(n){status=n;return this;},json(v){result=v;return this;},send(v){result=v;return this;}};await handler(req,res);return {status,result,headers};}
 records.set('mechanics/mechanic1',{companyId:'test-company',name:'Mecânico de teste',status:'Ativo',deleted:false});
 const base={responsibleId:'mechanic1',responsible:'Nome adulterado',customerName:'Cliente de teste',brand:'Marca',model:'Modelo',plate:'ABC1D23',entryDate:'2026-10-21T10:00',keys:1,mileage:100,fuelLevel:'0.5',description:'Descrição persistida\nCom duas linhas',damagedPoints:['top-front','left-roof'],accessories:{Antena:'Sim',GPS:'Não'}};
 let r,link,oldToken;
@@ -215,4 +215,47 @@ test('Checklist: edição/PDF dispensam histórico e versões; página maior red
   for(let i=0;i<105;i++)records.set('checklists/budget'+String(i).padStart(5,'0'),{companyId:staff.companyId,createdAt:new Date(2026,0,1,0,i).toISOString(),deleted:false});
   const result=await call(checklist,{action:'list',pageSize:1000},{address:'read-budget'});assert.equal(result.status,200);assert.equal(result.result.records.length,100);assert.ok(result.result.nextCursor);
  }finally{staff.companyId=oldCompany;}
+});
+
+test('Checklist: bloqueio exclusivo por conta/aba, validação no servidor, renovação, liberação e expiração',async()=>{
+ const original={...staff};const a='edit-session-browser-a',b='edit-session-browser-b';let record;
+ try{
+  record=(await call(checklist,{action:'save',editSession:a,data:base},{address:'edit-locks'})).result;assert.ok(record.id);
+  assert.equal((await call(checklist,{action:'acquire-edit',id:record.id,editSession:b},{address:'edit-locks'})).status,409,'A segunda aba da mesma conta também não edita');
+  staff={...original,uid:'other-editor',role:'atendente'};
+  assert.equal((await call(checklist,{action:'acquire-edit',id:record.id,editSession:b},{address:'edit-locks'})).status,409);
+  assert.equal((await call(checklist,{action:'get',id:record.id,includeHistory:false,includeVersions:false},{address:'edit-locks'})).status,200,'Visualização continua permitida');
+  assert.equal((await call(checklist,{action:'save',id:record.id,revision:record.revision,editSession:b,data:{...base,notes:'Não deve salvar'}},{address:'edit-locks'})).status,409);
+  assert.equal((await call(checklist,{action:'release-edit',id:record.id,editSession:b},{address:'edit-locks'})).status,200);assert.equal(records.get('checklists/'+record.id+'/editing/session').session,a,'Outra conta não pode liberar o bloqueio');
+  staff=original;const before=clone(records.get('checklists/'+record.id));assert.equal((await call(checklist,{action:'renew-edit',id:record.id,editSession:a},{address:'edit-locks'})).status,200);assert.deepEqual(records.get('checklists/'+record.id),before,'Renovar não salva formulário nem emite revisão');
+  assert.equal((await call(checklist,{action:'release-edit',id:record.id,editSession:a},{address:'edit-locks'})).status,200);
+  staff={...original,uid:'other-editor',role:'atendente'};assert.equal((await call(checklist,{action:'acquire-edit',id:record.id,editSession:b},{address:'edit-locks'})).status,200);
+  records.get('checklists/'+record.id+'/editing/session').expiresAt=Date.now()-1;
+  assert.equal((await call(checklist,{action:'save',id:record.id,revision:record.revision,editSession:b,data:base},{address:'edit-locks'})).status,409,'Bloqueio vencido não permite salvar');
+  staff=original;assert.equal((await call(checklist,{action:'acquire-edit',id:record.id,editSession:a},{address:'edit-locks'})).status,200);
+  staff.companyId='outra-empresa';assert.equal((await call(checklist,{action:'acquire-edit',id:record.id,editSession:a},{address:'edit-locks'})).status,403);
+ }finally{staff=original;}
+});
+test('Checklist SSE: mudanças salvas, assinatura, exclusão, isolamento e revogação em tempo real',async()=>{
+ const handler=(await import('../api/checklist-stream.js')).default;const original={...staff};const id='realtime-checklist';let running,res;
+ try{
+  staff={...original,uid:'live-user',companyId:'live-company'};records.set('users/live-user',{...staff});records.set('checklists/'+id,{companyId:staff.companyId,revision:1,version:1,status:'Finalizado',data:base,confirmation:{status:'Não enviado'}});records.set('checklists/foreign-live',{companyId:'outra-empresa',revision:1,data:{customerName:'SEGREDO OUTRA EMPRESA'}});
+  assert.equal((await call(handler,{}, {auth:false,address:'checklist-stream-denied'})).status,401);
+  const req=new EventEmitter();Object.assign(req,{method:'POST',body:{},headers:{host:'localhost',origin:'http://localhost',authorization:'Bearer TEST','content-type':'application/json','content-length':'2'},socket:{remoteAddress:'checklist-stream-live'}});
+  const frames=[];res=new EventEmitter();res.setHeader=()=>{};res.flushHeaders=()=>{};res.write=text=>{if(text.startsWith('data: '))frames.push(JSON.parse(text.slice(6)));};res.end=()=>res.emit('close');res.status=()=>res;res.json=v=>{throw Error(JSON.stringify(v));};
+  running=handler(req,res);await until(()=>frames.some(f=>f.type==='checklists'));assert.equal(frames[0].initial,true);assert.equal(frames[0].records.length,1);assert.ok(!JSON.stringify(frames).includes('SEGREDO'));
+  await db.doc('checklists/'+id).set({revision:2,confirmation:{status:'Confirmado por assinatura remota',signatureId:'signature-live'}},{merge:true});await until(()=>frames.some(f=>f.records?.some(r=>r.confirmation?.signatureId==='signature-live')));
+  const count=frames.length;await db.doc('checklists/'+id+'/editing/session').set({uid:'live-user',expiresAt:Date.now()+90000});await new Promise(r=>setTimeout(r,15));assert.equal(frames.length,count,'Bloqueio não publica alterações no checklist');
+  await db.doc('checklists/'+id).set({deleted:true,revision:3},{merge:true});await until(()=>frames.some(f=>f.removed?.includes(id)));
+  await db.doc('users/live-user').set({active:false},{merge:true});await until(()=>frames.some(f=>f.type==='unauthorized'));await running;
+ }finally{res?.emit('close');if(running)await running;staff=original;}
+});
+
+test('Veículos: vínculo com cliente é validado por empresa e não altera o checklist até Salvar',async()=>{
+ const original={...staff};try{
+  records.set('vehicles/link-car',{companyId:staff.companyId,brand:'Fiat',model:'Uno',plate:'LNK1234',customerId:'',ownerName:'Manual'});records.set('customers/link-owner',{companyId:staff.companyId,name:'Cliente vinculado'});records.set('customers/foreign-owner',{companyId:'foreign',name:'Cliente privado'});
+  const result=await call(checklist,{action:'link-vehicle',data:{vehicleId:'link-car',customerId:'link-owner',expectedCustomerId:''}},{address:'vehicle-link'});assert.equal(result.status,200,result.result.error);assert.equal(result.result.customerId,'link-owner');assert.equal(records.get('vehicles/link-car').ownerName,'Cliente vinculado');
+  assert.equal((await call(checklist,{action:'link-vehicle',data:{vehicleId:'link-car',customerId:'foreign-owner',expectedCustomerId:'link-owner'}},{address:'vehicle-link'})).status,403);
+  assert.equal((await call(checklist,{action:'link-vehicle',data:{vehicleId:'link-car',customerId:'link-owner',expectedCustomerId:''}},{address:'vehicle-link'})).status,409);
+ }finally{staff=original;}
 });
