@@ -1,3 +1,4 @@
+import {formatNumber} from '../../utils/numbers.js';
 import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
 import { listRecords } from '../../firebase/firestore.js';
@@ -27,7 +28,7 @@ const generate = async () => {
   });
   const total = data.reduce((sum,item) => sum + Number(item.total || item.amount || item.salePrice || 0), 0);
   const received = data.filter(item => item.type === 'Receita' || item.status === 'Pago').reduce((sum,item) => sum + Number(item.amount || item.total || 0), 0);
-  page.querySelector('#report').innerHTML = `<div class="grid stats-grid"><article class="card stat-card"><div><small>Registros</small><strong>${data.length}</strong></div></article><article class="card stat-card"><div><small>Valor acumulado</small><strong>${currency(total)}</strong></div></article><article class="card stat-card"><div><small>Receitas recebidas</small><strong>${currency(received)}</strong></div></article></div><div class="table-wrap"><table class="table"><thead><tr><th>Código/Nome</th><th>Data</th><th>Status</th><th>Valor</th></tr></thead><tbody>${data.map(item=>`<tr><td>${item.code || item.name || item.customerName || item.description || '—'}</td><td>${dateValue(item) || '—'}</td><td>${item.status || '—'}</td><td>${currency(item.total || item.amount || item.salePrice || 0)}</td></tr>`).join('')}</tbody></table></div>`;
+  page.querySelector('#report').innerHTML = `<div class="grid stats-grid"><article class="card stat-card"><div><small>Registros</small><strong>${formatNumber(data.length)}</strong></div></article><article class="card stat-card"><div><small>Valor acumulado</small><strong>${currency(total)}</strong></div></article><article class="card stat-card"><div><small>Receitas recebidas</small><strong>${currency(received)}</strong></div></article></div><div class="table-wrap"><table class="table"><thead><tr><th>Código/Nome</th><th>Data</th><th>Status</th><th>Valor</th></tr></thead><tbody>${data.map(item=>`<tr><td>${item.code || item.name || item.customerName || item.description || '—'}</td><td>${dateValue(item) || '—'}</td><td>${item.status || '—'}</td><td>${currency(item.total || item.amount || item.salePrice || 0)}</td></tr>`).join('')}</tbody></table></div>`;
 };
 
 page.querySelector('#generate').addEventListener('click', () => generate().catch(error => console.error(error)));

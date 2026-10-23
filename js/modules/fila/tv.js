@@ -1,3 +1,4 @@
+import {formatNumber} from '../../utils/numbers.js';
 import {subscribeQueue} from '../../services/queue-stream.js';
 import {queuePages,queueTone} from '../../utils/queue.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,7 +12,7 @@ function forecast(value){const match=String(value||'').match(/^(\d{4})-(\d{2})-(
 function table(items,offset){
  const cell=(text,kind='')=>'<td class="'+kind+' '+(String(text||'').length>45?'very-long':String(text||'').length>23?'long':'')+'">'+esc(text||'—')+'</td>';
  return '<div class="tv-table-wrap"><table class="tv-table"><colgroup>'+[6,18,19,14,10,19,14].map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup><thead><tr><th>#</th><th>Veículo</th><th>Serviço</th><th>Placa</th><th>Box</th><th>Status</th><th>Previsão</th></tr></thead><tbody>'+Array.from({length:10},(_,i)=>{
- const r=items[i];return '<tr>'+(r?'<td>'+(offset+i+1)+'</td>'+cell(r.vehicle,'vehicle')+cell(r.service)+cell(r.plate,'plate')+cell(r.status==='Em serviço'&&r.box?'Box '+String(r.box).padStart(2,'0'):'—','box')+'<td><span class="tv-badge '+queueTone(r.status)+'">'+esc(r.status)+'</span></td><td class="forecast">'+forecast(r.forecast)+'</td>':'<td>&nbsp;</td>'+('<td></td>').repeat(6))+'</tr>';
+ const r=items[i];return '<tr>'+(r?'<td>'+formatNumber(offset+i+1)+'</td>'+cell(r.vehicle,'vehicle')+cell(r.service)+cell(r.plate,'plate')+cell(r.status==='Em serviço'&&r.box?'Box '+String(r.box).padStart(2,'0'):'—','box')+'<td><span class="tv-badge '+queueTone(r.status)+'">'+esc(r.status)+'</span></td><td class="forecast">'+forecast(r.forecast)+'</td>':'<td>&nbsp;</td>'+('<td></td>').repeat(6))+'</tr>';
  }).join('')+'</tbody></table></div>';
 }
 

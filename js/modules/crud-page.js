@@ -1,3 +1,4 @@
+import {formatNumber,formatFieldNumber} from '../utils/numbers.js';
 import { requireAuth } from '../guards.js';
 import { mountShell, setupErrorBoundary } from '../app.js';
 import { createModal, createConfirmDialog } from '../components/modal.js';
@@ -86,7 +87,7 @@ export async function createCrudPage(config) {
           {icon:'search',label:'Registros exibidos',value:filtered.length,tone:'green'},
           {icon:'clock',label:'Atualizados hoje',value:updatedToday,tone:'orange'}
         ];
-        metricsElement.innerHTML = metricItems.map(item => `<article class="card stat-card metric-card metric-card--${item.tone || 'orange'}"><span class="stat-icon">${getIcon(item.icon || 'file',24)}</span><div><small>${item.label}</small><strong>${item.value}</strong>${item.note ? `<span>${item.note}</span>` : ''}</div></article>`).join('');
+        metricsElement.innerHTML = metricItems.map(item => `<article class="card stat-card metric-card metric-card--${item.tone || 'orange'}"><span class="stat-icon">${getIcon(item.icon || 'file',24)}</span><div><small>${item.label}</small><strong>${typeof item.value==='number'?formatNumber(item.value):item.value}</strong>${item.note ? `<span>${item.note}</span>` : ''}</div></article>`).join('');
       }
     }
     const isFiltering = Boolean(page.querySelector('#search').value.trim() || page.querySelector('#status-filter')?.value);
@@ -102,10 +103,10 @@ export async function createCrudPage(config) {
     const firstPage = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
     const pageButtons = Array.from({length:Math.min(5,totalPages)},(_,index)=>{
       const pageNumber = firstPage + index;
-      return `<button class="page-button ${pageNumber === currentPage ? 'active' : ''}" type="button" data-page="${pageNumber}">${pageNumber}</button>`;
+      return `<button class="page-button ${pageNumber === currentPage ? 'active' : ''}" type="button" data-page="${pageNumber}">${formatNumber(pageNumber)}</button>`;
     }).join('');
-    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${first}-${last} de ${availableRecords} registro(s)</span><div class="pagination-actions"><button class="page-button page-previous" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>${pageButtons}<button class="page-button page-next" type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Próxima ›</button><select class="select page-size" id="record-page-size" aria-label="Registros por página"><option value="10" ${recordsPerPage === 10 ? 'selected' : ''}>10 por página</option><option value="25" ${recordsPerPage === 25 ? 'selected' : ''}>25 por página</option><option value="50" ${recordsPerPage === 50 ? 'selected' : ''}>50 por página</option></select></div>`;
-    page.querySelector('#list-total').textContent = `Total de ${availableRecords} registro(s)`;
+    pagination.innerHTML = `<span class="pagination-summary">Mostrando ${formatNumber(first)}-${formatNumber(last)} de ${formatNumber(availableRecords)} registro(s)</span><div class="pagination-actions"><button class="page-button page-previous" type="button" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹ Anterior</button>${pageButtons}<button class="page-button page-next" type="button" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>Próxima ›</button><select class="select page-size" id="record-page-size" aria-label="Registros por página"><option value="10" ${recordsPerPage === 10 ? 'selected' : ''}>10 por página</option><option value="25" ${recordsPerPage === 25 ? 'selected' : ''}>25 por página</option><option value="50" ${recordsPerPage === 50 ? 'selected' : ''}>50 por página</option></select></div>`;
+    page.querySelector('#list-total').textContent = `Total de ${formatNumber(availableRecords)} registro(s)`;
   };
   const applySearch = (resetPage = false) => {
     const term = page.querySelector('#search').value.trim().toLocaleLowerCase('pt-BR');
@@ -159,7 +160,7 @@ export async function createCrudPage(config) {
   };
   const openDetails = record => {
     const checklistLink = ['serviceOrders','vehicles','checkIns'].includes(config.collection) ? '<a class="btn" href="#checklist?plate='+encodeURIComponent(record.plate||'')+'">Consultar checklist do veículo</a>' : '';
-    const content = checklistLink + `<div class="form-grid">${config.fields.filter(field => !field.hiddenInDetails).map(field => `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><div>${escapeHtml(record[field.key] || '—')}</div></div>`).join('')}<div class="field"><label>Cadastrado em</label><div>${formatDate(record.createdAt)}</div></div></div>`;
+    const content = checklistLink + `<div class="form-grid">${config.fields.filter(field => !field.hiddenInDetails).map(field => `<div class="field ${field.full ? 'full' : ''}"><label>${field.label}</label><div>${escapeHtml(formatFieldNumber(field.key,record[field.key]))}</div></div>`).join('')}<div class="field"><label>Cadastrado em</label><div>${formatDate(record.createdAt)}</div></div></div>`;
     createModal({ title: record[config.titleKey] || config.singular, content, confirmText: 'Fechar', cancelText: 'Editar', onConfirm: () => true });
   };
 

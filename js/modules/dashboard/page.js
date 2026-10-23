@@ -1,3 +1,4 @@
+import {formatNumber} from '../../utils/numbers.js';
 import Chart from 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/auto/+esm';
 import { requireAuth } from '../../guards.js';
 import { mountShell } from '../../app.js';
@@ -5,6 +6,7 @@ import { listRecords } from '../../firebase/firestore.js';
 import { getIcon } from '../../components/icons.js';
 import { currency } from '../../utils/currency.js';
 
+Chart.defaults.locale='pt-BR';
 Chart.defaults.font.family = 'Inter, sans-serif';
 await document.fonts.ready;
 
@@ -33,7 +35,7 @@ if (profile) {
   const revenueMonth = payments.filter(item => { const date=asDate(item.paidAt||item.createdAt||item.dueDate); return item.type==='Receita' && item.status!=='Cancelado' && date && date.getMonth()===now.getMonth() && date.getFullYear()===now.getFullYear(); }).reduce((sum,item)=>sum+Number(item.amount||0),0);
   const lowStock = products.filter(item=>Number(item.minimumStock)>0&&Number(item.quantity)<=Number(item.minimumStock));
   const stats = [{icon:'file',label:'OS em andamento',value:activeOrders.length,tone:'orange'},{icon:'car',label:'Veículos na oficina',value:activeOrders.filter(item=>item.vehicle||item.plate).length,tone:'orange'},{icon:'money',label:'Faturamento do mês',value:currency(revenueMonth),tone:'green'},{icon:'box',label:'Estoque baixo',value:lowStock.length,tone:'orange'}];
-  page.querySelector('#stats').innerHTML = stats.map(item=>`<article class="card stat-card metric-card metric-card--${item.tone}"><span class="stat-icon">${getIcon(item.icon,24)}</span><div><small>${item.label}</small><strong>${item.value}</strong><span>Dados atualizados da oficina</span></div></article>`).join('');
+  page.querySelector('#stats').innerHTML = stats.map(item=>`<article class="card stat-card metric-card metric-card--${item.tone}"><span class="stat-icon">${getIcon(item.icon,24)}</span><div><small>${item.label}</small><strong>${typeof item.value==='number'?formatNumber(item.value):item.value}</strong><span>Dados atualizados da oficina</span></div></article>`).join('');
 
   const months = Array.from({length:12},(_,index)=>new Date(now.getFullYear(),index,1));
   const monthlyRevenue = months.map(month=>payments.filter(item=>{ const date=asDate(item.paidAt||item.createdAt||item.dueDate); return item.type==='Receita'&&item.status!=='Cancelado'&&date&&date.getMonth()===month.getMonth()&&date.getFullYear()===month.getFullYear(); }).reduce((sum,item)=>sum+Number(item.amount||0),0));
@@ -42,7 +44,7 @@ if (profile) {
   const groups = [{label:'Em andamento',statuses:['Em execução','Entrada realizada','Diagnóstico realizado'],color:'#ff4d0b'},{label:'Aguardando peças',statuses:['Aguardando peças'],color:'#fdb022'},{label:'Aguardando aprovação',statuses:['Aguardando aprovação','Orçamento enviado'],color:'#2e90fa'},{label:'Concluídas',statuses:['Finalizado','Entregue','Concluído'],color:'#12b76a'},{label:'Canceladas',statuses:['Cancelado'],color:'#f04438'}].map(group=>({...group,count:orders.filter(item=>group.statuses.includes(item.status)).length}));
   const totalOrders = groups.reduce((sum,item)=>sum+item.count,0);
   new Chart(page.querySelector('#status-chart'),{type:'doughnut',data:{labels:groups.map(item=>item.label),datasets:[{data:groups.map(item=>item.count),backgroundColor:groups.map(item=>item.color),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'67%',plugins:{legend:{display:false}}}});
-  page.querySelector('#status-legend').innerHTML=groups.map(item=>`<div><span style="--legend-color:${item.color}"></span><small>${item.label}</small><strong>${item.count}</strong><em>${totalOrders?Math.round(item.count/totalOrders*100):0}%</em></div>`).join('');
+  page.querySelector('#status-legend').innerHTML=groups.map(item=>`<div><span style="--legend-color:${item.color}"></span><small>${item.label}</small><strong>${formatNumber(item.count)}</strong><em>${totalOrders?Math.round(item.count/totalOrders*100):0}%</em></div>`).join('');
 
   const recent = [...orders].sort((a,b)=>(asDate(b.createdAt)?.getTime()||0)-(asDate(a.createdAt)?.getTime()||0)).slice(0,5);
   page.querySelector('#recent-orders').innerHTML = recent.length ? `<div class="table-wrap"><table class="table"><thead><tr><th>Nº OS</th><th>Cliente</th><th>Veículo</th><th>Serviço</th><th>Status</th><th>Entrada</th><th>Previsão</th><th>Valor</th></tr></thead><tbody>${recent.map(item=>`<tr><td><strong>${escapeHtml(item.code||'—')}</strong></td><td>${escapeHtml(item.customerName||'—')}</td><td>${escapeHtml(item.vehicle||item.plate||'—')}</td><td>${escapeHtml(item.service||item.diagnosis||'—')}</td><td><span class="badge">${escapeHtml(item.status||'—')}</span></td><td>${escapeHtml(String(item.entryDate||'—').slice(0,10))}</td><td>${escapeHtml(String(item.forecastDate||'—').slice(0,10))}</td><td><strong>${currency(item.total||0)}</strong></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty compact-empty"><strong>Nenhum atendimento registrado</strong><p>As ordens de serviço aparecerão aqui.</p></div>';

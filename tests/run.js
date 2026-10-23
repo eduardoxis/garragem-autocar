@@ -15,3 +15,5 @@ await import('./back-navigation.test.js');
 await import('./checklist-list.test.js');
 await import('./workshop.test.js');
 await import('./query-cache.test.js');
+
+await import('./numbers.test.js');

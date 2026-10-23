@@ -1,3 +1,4 @@
+import {formatNumber} from '../utils/numbers.js';
 import { listRecords } from '../firebase/firestore.js';
 import { getIcon } from './icons.js';
 
@@ -53,7 +54,7 @@ async function fetchNotifications(profile) {
   });
   products.filter(item => Number(item.minimumStock ?? item.minStock ?? 0) > 0 && Number(item.quantity ?? item.stock ?? 0) <= Number(item.minimumStock ?? item.minStock)).forEach(item => {
     const quantity = Number(item.quantity ?? item.stock ?? 0);
-    notes.push({ category:'estoque', priority:quantity <= 0 ? 'urgent' : 'high', time:0, icon:'box', title:'Estoque baixo', detail:`${item.name || item.description || 'Item sem nome'} · ${quantity} unidade(s)`, route:'#estoque' });
+    notes.push({ category:'estoque', priority:quantity <= 0 ? 'urgent' : 'high', time:0, icon:'box', title:'Estoque baixo', detail:`${item.name || item.description || 'Item sem nome'} · ${formatNumber(quantity)} unidade(s)`, route:'#estoque' });
   });
   serviceOrders.filter(item => !isClosed(item.status) && item.forecastDate).forEach(item => {
     const priority = priorityFor(item.forecastDate);
@@ -76,7 +77,7 @@ function collectNotifications(profile){
 function renderPanel(notes, active = 'all') {
   const items = notes.filter(note => active === 'all' || note.category === active);
   return `<section class="notifications-panel" id="notifications-panel" aria-label="Central de notificações">
-    <header class="notifications-panel__header"><div><strong>Notificações</strong><small>${notes.length ? `${notes.length} pendência(s) para acompanhar` : 'Tudo em dia por aqui'}</small></div><button class="btn btn-icon" type="button" data-notification-close aria-label="Fechar notificações">${getIcon('x', 18)}</button></header>
+    <header class="notifications-panel__header"><div><strong>Notificações</strong><small>${notes.length ? `${formatNumber(notes.length)} pendência(s) para acompanhar` : 'Tudo em dia por aqui'}</small></div><button class="btn btn-icon" type="button" data-notification-close aria-label="Fechar notificações">${getIcon('x', 18)}</button></header>
     <div class="notifications-tabs">${filters.map(([key, label]) => `<button type="button" data-notification-filter="${key}" class="${active === key ? 'active' : ''}">${label}</button>`).join('')}</div>
     <div class="notifications-list">${items.length ? items.map((item, index) => `<button type="button" class="notification-item notification-item--${item.priority}" data-notification-route="${item.route}"><span class="notification-item__icon">${getIcon(item.icon, 19)}</span><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail)}</small></span>${index < 3 ? '<b>Ver</b>' : ''}</button>`).join('') : `<div class="notifications-empty">${getIcon('check', 28)}<strong>Nenhuma pendência nesta categoria</strong><span>Os alertas aparecem aqui quando exigirem atenção.</span></div>`}</div>
     <footer><a href="#lembretes" data-notification-route="#lembretes">Ver central de lembretes</a></footer>

@@ -1,3 +1,4 @@
+import {numberKind,parseNumberInput,formatNumber} from './numbers.js';
 export const digits = value => String(value || '').replace(/\D/g, '');
 export const normalizeWhatsapp = value => {
   const number = digits(value).replace(/^0+/, '');
@@ -47,6 +48,8 @@ export function inputMaskFor(input) {
   if (['zipcode','cep','postalcode'].includes(name)) return 'cep';
   if (name === 'plate') return 'plate';
   if (currencyFields.has(name)) return 'currency';
+  if (numberKind(name)) return numberKind(name);
+  if(input.type==='number'&&!/year|^ano$/.test(name))return input.step==='any'||(input.step&&Number(input.step)%1!==0)?'decimal':'integer';
   return '';
 }
 
@@ -55,6 +58,8 @@ const placeholders = {
   phone:'(00) 00000-0000',
   cep:'00000-000',
   plate:'ABC1D23',
+  integer:'Ex.: 40.000',
+  decimal:'Ex.: 1.000,50',
   currency:'Ex.: 2.500,00'
 };
 
@@ -81,9 +86,16 @@ export function applyInputMasks(root = document) {
       return;
     }
     input.dataset.mask = mask;
-    input.inputMode = mask === 'plate' ? 'text' : 'numeric';
+    input.inputMode = mask === 'plate' ? 'text' : mask==='decimal'?'decimal':'numeric';
     input.autocomplete = mask === 'phone' ? 'tel' : 'off';
-    if (mask === 'currency' && input.type === 'number') input.type = 'text';
+    if (['currency','integer','decimal'].includes(mask) && input.type === 'number') input.type = 'text';
+    if(['integer','decimal'].includes(mask)){
+      if(!input.placeholder)input.placeholder=placeholders[mask];
+      const validate=()=>{const raw=input.value.trim(),n=parseNumberInput(raw);let error='';if(raw&&(!Number.isFinite(n)||(mask==='integer'&&!Number.isInteger(n))))error=mask==='integer'?'Informe um número inteiro válido.':'Informe um número válido.';else if(raw&&input.hasAttribute('min')&&n<Number(input.min))error='O mínimo permitido é '+formatNumber(Number(input.min))+'.';else if(raw&&input.hasAttribute('max')&&n>Number(input.max))error='O máximo permitido é '+formatNumber(Number(input.max))+'.';input.setCustomValidity(error);return !error;};
+      if(input.dataset.maskBound!=='true'&&input.value!==''&&(mask!=='integer'||Number.isInteger(Number(input.value))))input.value=formatNumber(input.value,{decimals:mask==='integer'?0:null,empty:input.value});
+      validate();if(input.dataset.maskBound==='true')return;input.dataset.maskBound='true';input.inputMode=mask==='integer'?'numeric':'decimal';
+      input.addEventListener('input',validate);input.addEventListener('blur',()=>{if(validate()&&input.value.trim())input.value=formatNumber(parseNumberInput(input.value),{decimals:mask==='integer'?0:null});});return;
+    }
     if (!input.placeholder) input.placeholder = placeholders[mask];
     input.value = maskValue(mask, input.value);
     if (input.dataset.maskBound === 'true') return;
@@ -107,6 +119,7 @@ export function installInputMasks() {
 
 export function formDataObject(form) {
   const data = Object.fromEntries(new FormData(form));
-  form.querySelectorAll('input[data-mask="currency"]').forEach(input => { data[input.name] = parseCurrencyInput(input.value); });
+  form.querySelectorAll('input[data-mask="currency"]').forEach(input => { if(input.name)data[input.name] = parseCurrencyInput(input.value); });
+  form.querySelectorAll('input[data-mask="integer"],input[data-mask="decimal"]').forEach(input=>{if(input.name)data[input.name]=input.value.trim()===''?'':parseNumberInput(input.value);});
   return data;
 }
