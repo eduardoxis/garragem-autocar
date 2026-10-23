@@ -1,3 +1,4 @@
+import {mediaCaption} from './media-name.js';
 import { paginateQuoteDocument } from '../../utils/pdf-pages.js';
 import { jsPDF } from 'https://cdn.jsdelivr.net/npm/jspdf@3.0.3/+esm';
 import html2canvas from 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/+esm';
@@ -11,7 +12,7 @@ export async function makePdf(r,context){
  await Promise.all([...doc.querySelectorAll('link')].map(l=>l.sheet?Promise.resolve():new Promise((resolve,reject)=>{l.onload=resolve;l.onerror=()=>reject(new Error('Não foi possível carregar o layout do PDF'));}))); 
  const files=r.data.media||[];
  if(files.length){const appendix=host.querySelector('.checklist-sheet.appendix');const footer=appendix.querySelector(':scope > footer');footer.remove();appendix.insertAdjacentHTML('beforeend','<h2>Fotos e vídeos da vistoria</h2>');let row;
- for(let i=0;i<files.length;i++){const m=files[i],blob=await mediaRequest({...context,action:'read',mediaId:m.id,version:r.version},true);if(i%2===0){row=doc.createElement('div');row.className='pdf-media-row';appendix.append(row);}const figure=doc.createElement('figure');figure.innerHTML='<figcaption><b>'+esc(m.part)+'</b><br>'+esc(m.caption)+'</figcaption>';if(blob.type.startsWith('image/')){const url=URL.createObjectURL(blob);urls.push(url);const image=doc.createElement('img');image.src=url;image.alt='Registro da vistoria';figure.prepend(image);}else figure.innerHTML+='<p>Vídeo registrado. Consulte a equipe para acesso seguro ao vídeo deste checklist.</p>';row.append(figure);}
+ for(let i=0;i<files.length;i++){const m=files[i],blob=await mediaRequest({...context,action:'read',mediaId:m.id,version:r.version},true);if(i%2===0){row=doc.createElement('div');row.className='pdf-media-row';appendix.append(row);}const figure=doc.createElement('figure');figure.innerHTML='<figcaption><b>'+esc(m.part)+'</b><br>'+esc(mediaCaption(m,blob.type))+'</figcaption>';if(blob.type.startsWith('image/')){const url=URL.createObjectURL(blob);urls.push(url);const image=doc.createElement('img');image.src=url;image.alt='Registro da vistoria';figure.prepend(image);}else figure.innerHTML+='<p>Vídeo registrado. Consulte a equipe para acesso seguro ao vídeo deste checklist.</p>';row.append(figure);}
  appendix.append(footer);}
  // Flow the entire checklist as one document, with one header and one final footer.
  const first=host.querySelector('.checklist-sheet');const appendix=host.querySelector('.checklist-sheet.appendix');

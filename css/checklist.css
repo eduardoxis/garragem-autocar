@@ -266,3 +266,8 @@
  .checklist-form .input,.checklist-form .select,.checklist-form .textarea{min-width:0;max-width:100%;font-size:var(--text-base)}
  .checklist-list-page>.page-heading{align-items:flex-start;flex-wrap:wrap}
 }
+
+/* Long file names and captions must stay within their photo card. */
+.checklist-media>figure,.checklist-media>article{min-width:0;margin:0}
+.checklist-media figcaption,.checklist-media>article>p,.pdf-media-row figcaption{overflow-wrap:anywhere;word-break:break-word;line-height:1.5}
+.checklist-media-download{display:inline-block;margin-top:8px;font-size:var(--text-sm);text-decoration:underline}

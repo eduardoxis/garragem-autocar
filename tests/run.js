@@ -17,3 +17,5 @@ await import('./workshop.test.js');
 await import('./query-cache.test.js');
 
 await import('./numbers.test.js');
+
+await import('./media-name.test.js');
